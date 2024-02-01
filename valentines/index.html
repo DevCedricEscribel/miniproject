@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Yes or No Question</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        text-align: center;
+      }
+      #question {
+        margin-top: 50px;
+        position: relative; /* Added for positioning */
+      }
+      #no-button {
+        padding: 10px 20px;
+        background-color: red;
+        color: white;
+        border: none;
+        cursor: pointer;
+        transition: transform 0.3s ease;
+        position: absolute; /* Added for positioning */
+      }
+      #no-button:hover {
+        transform: translateY(-5px);
+      }
+
+      #Yes-button {
+        padding: 10px 20px;
+        margin-right: 50px;
+        background-color: green;
+        color: white;
+        border: none;
+        cursor: pointer;
+        transition: transform 0.3s ease;
+      }
+      #Yes-button:hover {
+        transform: translateY(-5px);
+      }
+    </style>
+  </head>
+  <body>
+    <div id="question">
+      <h2>Will you be my valentine?</h2>
+      <button id="Yes-button" onclick="displayCustomGif()">Yes</button>
+      <button id="no-button" onclick="changePosition()">No</button>
+    </div>
+
+    <script>
+      var closeCount = 0;
+
+      document.addEventListener("mousemove", function (event) {
+        var button = document.getElementById("no-button");
+        var buttonRect = button.getBoundingClientRect();
+        var mouseX = event.clientX;
+        var mouseY = event.clientY;
+
+        var buttonX = buttonRect.left + buttonRect.width / 2;
+        var buttonY = buttonRect.top + buttonRect.height / 2;
+
+        var distance = Math.sqrt(
+          Math.pow(mouseX - buttonX, 2) + Math.pow(mouseY - buttonY, 2)
+        );
+
+        if (distance < 50) {
+          // Adjust this threshold as needed
+          changePosition();
+        }
+      });
+
+      function changePosition() {
+        var button = document.getElementById("no-button");
+        var question = document.getElementById("question");
+        var questionRect = question.getBoundingClientRect();
+        var buttonRect = button.getBoundingClientRect();
+
+        var minX = 20; // Minimum value for x-axis
+        var maxX = questionRect.width - buttonRect.width; // Maximum value for x-axis
+        var minY = 30; // Minimum value for y-axis
+        var maxY = questionRect.height - buttonRect.height; // Maximum value for y-axis
+
+        var newLeft = Math.floor(Math.random() * (maxX - minX)) + minX;
+        var newTop = Math.floor(Math.random() * (maxY - minY)) + minY;
+
+        button.style.left = newLeft + "px";
+        button.style.top = newTop + "px";
+
+        closeCount++;
+        if (closeCount >= 10) {
+          button.style.display = "none";
+          var gifUrls = [
+            "https://media.giphy.com/media/wID3zXURLH1jrjCcZy/giphy.gif?cid=ecf05e474p0qgbz6bp23jml1c4pyjkkrhidokjkysbj1mcfz&ep=v1_gifs_search&rid=giphy.gif&ct=g",
+            // Add more GIF URLs here
+          ];
+          for (var i = 0; i < gifUrls.length; i++) {
+            var gifElement = document.createElement("img");
+            gifElement.src = gifUrls[i];
+            document.body.appendChild(gifElement);
+            // Auto-hide each GIF after 5 seconds
+            setTimeout(
+              (function (element) {
+                return function () {
+                  if (element && element.parentNode) {
+                    element.parentNode.removeChild(element);
+                  }
+                };
+              })(gifElement),
+              3000
+            );
+          }
+        }
+      }
+
+      function displayCustomGif() {
+        var gifUrl = [
+          "https://media.giphy.com/media/l2Je2M4Nfrit0L7sQ/giphy.gif",
+          "https://media.giphy.com/media/xT0Cyhi8GCSU91PvtC/giphy.gif?cid=790b7611ol0f6e4cwgp4z0u2522fai0443fp1ms05xo8jvb1&ep=v1_gifs_search&rid=giphy.gif&ct=g",
+
+          // Add more GIF URLs here
+        ];
+        var gifElement = document.createElement("img");
+        gifElement.src = gifUrl;
+        document.body.appendChild(gifElement);
+
+        var noButton = document.getElementById("no-button");
+        noButton.style.display = "none";
+
+        var yesButton = document.getElementById("Yes-button");
+        yesButton.style.display = "none";
+
+        var question = document.getElementById("question");
+        var h2 = question.querySelector("h2");
+        h2.textContent = "You said Yes! Happy Valentine's Day!";
+      }
+    </script>
+  </body>
+</html>
