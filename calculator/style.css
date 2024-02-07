@@ -1,0 +1,20 @@
+*{
+    border: 1px solid black;
+};
+
+.form-label{
+color: black;  
+}
+.row{
+    background-color: rgb(7, 4, 67, 0.7 );
+}
+b{
+    color: yellow;
+}
+label{
+    color: yellow;
+}
+.g-0{
+    background-color: black;
+    
+}

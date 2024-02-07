@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Bootstrap demo</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+  </head>
+  <body>
+
+
+    <div class="card mb-3" style="max-width: 1060px;">
+        <div class="row g-0">
+          <div class="col-md-4 px-3" style="display: flex;     justify-content: center; flex-direction: column;">
+            <img src="price.jpg" class="img-fluid" alt="price">
+          </div>
+
+          <div class="col-md-8 ">
+            <div class="col-12">
+              <label for="electricitybill" class="form-label">Average electricity bill</label>
+              <div class="input-group mb-3">
+                <div class="input-group-prepend">
+                  <span class="input-group-text">₱</span>
+                </div>
+                <input type="number" class="form-control" id="Amount" placeholder="Enter amount">
+              </div>
+              
+            </div>
+            <form class="row g-3">
+
+              <div class="row g-3" style="font-size: larger;">
+              <div class="col-md-6">
+                <label class="form-label"><b> #Bawas Bill </b></label>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label"><b> #Zero Bill</b></label>
+              </div>
+              </div>
+
+              <div class="col-md-6">
+                <label for="inputEmail4" class="form-label">System Size</label>
+                <input disabled class="form-control" id="BawasSize">
+              </div>
+              <div class="col-md-6">
+                <label for="inputPassword4" class="form-label">System Size</label>
+                <input disabled class="form-control" id="ZeroSize">
+              </div>
+            
+              <div class="col-md-6">
+                <label for="inputEmail4" class="form-label">Number Of Panels</label>
+                <input disabled class="form-control" id="BawasPanels">
+              </div>
+              <div class="col-md-6">
+                <label for="inputPassword4" class="form-label">Number Of Panels</label>
+                <input disabled class="form-control" id="ZeroPanels">
+              </div>
+
+              <div class="col-md-6">
+                <label for="inputEmail4" class="form-label">Estimated monthly savings</label>
+                <input disabled class="form-control" id="BawasSavings">
+              </div>
+              <div class="col-md-6">
+                <label for="inputPassword4" class="form-label">Estimated monthly savings</label>
+                <input disabled class="form-control" id="ZeroSavings">
+              </div>
+
+              <div>
+                <button type="button" id="Calculate" class="btn btn-primary">Calculate</button>
+              </div>
+
+              </div>
+            </form>
+
+          </div>
+
+        </div>
+      </div>
+
+      <script>
+        // Get the Calculate button element
+        const calculateButton = document.getElementById('Calculate');
+    
+        // Add event listener for click event
+        calculateButton.addEventListener('click', function() {
+            // Get the value entered in the Amount input
+            let amountValue = parseInt(document.getElementById('Amount').value);
+    
+            // Initial threshold and increment
+            const initialThreshold = 6113;
+            const increment = 1111;
+    
+            // Number of thresholds to generate
+            const numThresholds = 999999; // Including the initial threshold
+    
+            // Generate the thresholds
+            const thresholds = [];
+            for (let i = 0; i < numThresholds; i++) {
+                thresholds.push(initialThreshold + i * increment);
+            }
+    
+            // Default values for BawasPanels and ZeroPanels
+            let bawasPanels = 0;
+            let zeroPanels = 0;
+            let BawasSavingsStart = 2250; // Start BawasSavings at 2250
+            let BawasSavingsEnd = 3750; // End BawasSavings at 3750
+    
+            // Loop through thresholds and set BawasPanels and ZeroPanels accordingly
+            for (let i = 0; i < thresholds.length; i++) {
+                if (amountValue <= thresholds[i]) {
+                    bawasPanels = i + 5; // Base value + increment
+                    zeroPanels = (i + 5) * 2; // Double the base value
+                    BawasSavingsStart += 450 * i; 
+                    BawasSavingsEnd += 450 * i; 
+                    break; // Exit the loop once a threshold is reached
+                }
+            }
+    
+            // Update the values in the form
+            document.getElementById('BawasSize').value = bawasPanels * 0.5;
+            document.getElementById('ZeroSize').value = bawasPanels * 1;
+            document.getElementById('BawasPanels').value = bawasPanels;
+            document.getElementById('ZeroPanels').value = zeroPanels;
+            document.getElementById('BawasSavings').value = '₱ ' + BawasSavingsStart.toLocaleString() + ' - ₱ ' + BawasSavingsEnd.toLocaleString();
+            document.getElementById('ZeroSavings').value = '₱ ' + (BawasSavingsStart * 2).toLocaleString() + ' - ₱ ' + (BawasSavingsEnd * 2).toLocaleString();        });
+    
+    </script>
+    
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
+  </body>
+</html>
