@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Code Scanner and Generator</title>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr/dist/jsQR.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        #generator-section, #scanner-section {
+            margin: 20px;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 600px;
+        }
+        #generator-section input, #generator-section button {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+        }
+        canvas, video {
+            width: 100%;
+            max-width: 500px;
+            margin: 10px auto;
+            border: 2px solid #000;
+        }
+        #scanner-section {
+            position: relative;
+        }
+        #result {
+            margin-top: 20px;
+            font-size: 18px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+<h1>QR Code Generator and Scanner</h1>
+
+<!-- QR Code Generator Section -->
+<div id="generator-section">
+    <h2>QR Code Generator</h2>
+    <input type="text" id="qrTextInput" placeholder="Enter text for QR code">
+    <button id="generateQR">Generate QR Code</button>
+    <canvas id="qrCodeCanvas"></canvas>
+</div>
+
+<!-- QR Code Scanner Section -->
+<div id="scanner-section">
+    <h2>QR Code Scanner</h2>
+    <button id="startScanButton">Start Scanner</button>
+    <video id="scannerPreview" autoplay playsinline></video>
+    <canvas id="captureCanvas" style="display:none;"></canvas>
+    <div id="result">
+        <h3>Scanned Result:</h3>
+        <p id="scannedText">None</p>
+    </div>
+</div>
+
+<script>
+    // QR Code Generator
+    const qrTextInput = document.getElementById('qrTextInput');
+    const generateQRButton = document.getElementById('generateQR');
+    const qrCodeCanvas = document.getElementById('qrCodeCanvas');
+
+    generateQRButton.addEventListener('click', () => {
+        const text = qrTextInput.value;
+        if (text) {
+            QRCode.toCanvas(qrCodeCanvas, text, function (error) {
+                if (error) console.error(error);
+                console.log('QR Code generated!');
+            });
+        } else {
+            alert("Please enter some text to generate QR Code.");
+        }
+    });
+
+    // QR Code Scanner
+    const startScanButton = document.getElementById('startScanButton');
+    const scannerPreview = document.getElementById('scannerPreview');
+    const captureCanvas = document.getElementById('captureCanvas');
+    const scannedText = document.getElementById('scannedText');
+
+    let videoStream;
+
+    // Helper function to handle the scanning logic
+    function scanQRCode() {
+        const canvas = captureCanvas.getContext('2d');
+        captureCanvas.width = scannerPreview.videoWidth;
+        captureCanvas.height = scannerPreview.videoHeight;
+
+        canvas.drawImage(scannerPreview, 0, 0, captureCanvas.width, captureCanvas.height);
+
+        const imageData = canvas.getImageData(0, 0, captureCanvas.width, captureCanvas.height);
+        const code = jsQR(imageData.data, captureCanvas.width, captureCanvas.height);
+
+        if (code) {
+            scannedText.innerText = code.data; // Display scanned QR code data
+            console.log("QR Code detected:", code.data);
+        } else {
+            requestAnimationFrame(scanQRCode); // Continue scanning
+        }
+    }
+
+    // Function to start the scanner
+    function startScanner() {
+        navigator.mediaDevices.getUserMedia({
+            video: {
+                facingMode: 'environment', // Use rear camera if available
+                width: { ideal: 1280 },
+                height: { ideal: 720 }
+            }
+        })
+        .then(stream => {
+            videoStream = stream;
+            scannerPreview.srcObject = stream;
+            scannerPreview.play(); // Play the video
+            requestAnimationFrame(scanQRCode);
+        })
+        .catch(error => {
+            console.error('Camera access denied:', error);
+            alert('Please allow camera access to scan QR codes.');
+        });
+    }
+
+    // Start scanning when the button is clicked
+    startScanButton.addEventListener('click', startScanner);
+</script>
+
+</body>
+</html>
