@@ -3,10 +3,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QR and Barcode Scanner with Live Camera Preview</title>
+    <title>QR Code and Barcode Generator with Scanner</title>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode/dist/JsBarcode.all.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsqr/1.4.0/jsQR.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr/dist/jsQR.min.js"></script>
     <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        input, select, button {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            box-sizing: border-box;
+        }
+        canvas {
+            display: block;
+            margin: 20px auto;
+        }
+        video {
+            width: 100%;
+            height: auto;
+            border: 2px solid #000;
+        }
         #scanner-container {
             display: none;
             width: 100%;
@@ -14,184 +42,241 @@
             margin: 20px auto;
             position: relative;
         }
-        video {
+        #scanner-preview {
             width: 100%;
             height: auto;
-            border: 2px solid #000;
         }
-        #overlay {
+        #highlight-box {
             position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+            border: 2px solid green;
+            pointer-events: none;
+            display: none;
+        }
+        #focus-box {
+            position: absolute;
             border: 2px dashed red;
             pointer-events: none;
-        }
-        #scan-line {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 4px;
-            background-color: red;
-            animation: scanning 2s infinite linear;
-        }
-        @keyframes scanning {
-            0% { top: 0; }
-            50% { top: 50%; }
-            100% { top: 100%; }
-        }
-        button {
-            display: block;
-            margin: 20px auto;
-            padding: 10px 20px;
-            font-size: 16px;
+            width: 100px;
+            height: 100px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
         }
         #result {
             text-align: center;
             font-size: 18px;
             margin-top: 20px;
         }
+        #scannedInfo {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 16px;
+        }
     </style>
 </head>
 <body>
 
-    <h1>QR and Barcode Scanner with Camera Preview</h1>
+<div class="container">
+    <h1>QR Code and Barcode Generator</h1>
 
-    <!-- Button to start the scanner -->
-    <button id="start-scan">Start QR/Barcode Scan</button>
+    <label for="inputText">Enter Text:</label>
+    <input type="text" id="inputText" placeholder="Enter text for QR/Barcode" />
 
-    <!-- Container for live preview -->
-    <div id="scanner-container">
-        <video id="camera-preview" autoplay playsinline></video>
-        <canvas id="qr-canvas" style="display:none;"></canvas>
-        <div id="scan-line"></div> <!-- Scanning effect -->
+    <label for="codeType">Choose Code Type:</label>
+    <select id="codeType">
+        <option value="qr">QR Code</option>
+        <option value="barcode">Barcode</option>
+    </select>
+
+    <button onclick="generateCode()">Generate</button>
+
+    <!-- QR Code -->
+    <div id="qrCodeContainer" style="display:none;">
+        <h2>QR Code:</h2>
+        <div id="qrCode"></div>
     </div>
 
-    <!-- Result and Date/Time Display -->
+    <!-- Barcode -->
+    <div id="barcodeContainer" style="display:none;">
+        <h2>Barcode:</h2>
+        <svg id="barcode"></svg>
+    </div>
+
+    <!-- Scanner Section -->
+    <h1>Scanner</h1>
+    <button id="startScanButton">Start Scanner</button>
+    <div id="scanner-container">
+        <video id="scanner-preview" autoplay></video>
+        <div id="highlight-box"></div>
+        <div id="focus-box"></div>
+    </div>
     <div id="result">
         <h3>Scanned Code:</h3>
-        <p id="code"></p>
-        <h3>Scanned Time:</h3>
-        <p id="time"></p>
+        <p id="scannedCode"></p>
     </div>
+    <div id="scannedInfo">
+        <p><strong>Scanned at:</strong> <span id="scanTime"></span></p>
+    </div>
+</div>
 
-    <script>
-        const scannerContainer = document.getElementById('scanner-container');
-        const startScanButton = document.getElementById('start-scan');
-        const codeElement = document.getElementById('code');
-        const timeElement = document.getElementById('time');
-        const videoElement = document.getElementById('camera-preview');
-        const qrCanvas = document.getElementById('qr-canvas');
-        const qrContext = qrCanvas.getContext('2d');
-        const scanLine = document.getElementById('scan-line');
+<script>
+    const scannerContainer = document.getElementById('scanner-container');
+    const startScanButton = document.getElementById('startScanButton');
+    const scannerPreview = document.getElementById('scanner-preview');
+    const highlightBox = document.getElementById('highlight-box');
+    const focusBox = document.getElementById('focus-box');
+    const scannedCodeElement = document.getElementById('scannedCode');
+    const scanTimeElement = document.getElementById('scanTime');
+    const scannedInfo = document.getElementById('scannedInfo');
 
-        let barcodeDetected = false;
-        let qrCodeDetected = false;
+    let currentFocusSize = { width: 100, height: 100 };  // Initial focus box size
 
-        // Function to get current date and time
-        function getCurrentDateTime() {
-            const now = new Date();
-            return `${now.toLocaleDateString()} ${now.toLocaleTimeString()}`;
+    // QR Code and Barcode generator
+    function generateCode() {
+        const inputText = document.getElementById("inputText").value;
+        const codeType = document.getElementById("codeType").value;
+
+        // Hide both QR code and barcode containers
+        document.getElementById("qrCodeContainer").style.display = 'none';
+        document.getElementById("barcodeContainer").style.display = 'none';
+
+        if (inputText.trim() === "") {
+            alert("Please enter some text.");
+            return;
         }
 
-        // Start camera feed for live preview
-        function startCameraPreview() {
-            navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
-                .then(function (stream) {
-                    videoElement.srcObject = stream;
-                    scannerContainer.style.display = 'block'; // Show the live preview
-                    scanQRCode(); // Start QR code scanning
-                })
-                .catch(function (err) {
-                    console.error("Camera access denied: ", err);
-                });
-        }
+        if (codeType === "qr") {
+            // Show QR code container
+            document.getElementById("qrCodeContainer").style.display = 'block';
 
-        // Function to start the barcode scanner and display the camera preview
-        function startScanner() {
-            Quagga.init({
-                inputStream: {
-                    name: "Live",
-                    type: "LiveStream",
-                    target: videoElement, // The video element that displays the camera feed
-                    constraints: {
-                        facingMode: "environment" // Use the back camera if available
-                    }
-                },
-                decoder: {
-                    readers: ["code_128_reader", "ean_reader", "ean_8_reader", "upc_reader"] // Barcode formats to decode
+            // Generate QR code
+            QRCode.toCanvas(document.getElementById("qrCode"), inputText, function (error) {
+                if (error) {
+                    console.error(error);
                 }
-            }, function (err) {
-                if (err) {
-                    console.error(err);
-                    return;
-                }
-                Quagga.start();
-                startScanButton.innerText = 'Scanning...';
-                startScanButton.disabled = true;
+            });
+        } else if (codeType === "barcode") {
+            // Show Barcode container
+            document.getElementById("barcodeContainer").style.display = 'block';
+
+            // Generate barcode
+            JsBarcode("#barcode", inputText, {
+                format: "CODE128",
+                lineColor: "#0aa",
+                width: 2,
+                height: 40,
+                displayValue: true
             });
         }
+    }
 
-        // Stop the scanner and camera
-        function stopScanner() {
-            Quagga.stop();
-            const stream = videoElement.srcObject;
-            if (stream) {
-                stream.getTracks().forEach(track => track.stop()); // Stop camera stream
-            }
-            scannerContainer.style.display = 'none';
-            startScanButton.innerText = 'Start QR/Barcode Scan';
-            startScanButton.disabled = false;
-        }
+    // Start scanner
+    function startScanner() {
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+            .then(function (stream) {
+                scannerPreview.srcObject = stream;
+                scannerContainer.style.display = 'block'; // Show the live camera feed
+                scanQRCode(); // Start QR code scanning
+                startBarcodeScanner(); // Start barcode scanning with QuaggaJS
+            })
+            .catch(function (err) {
+                console.error("Camera access denied: ", err);
+            });
+    }
 
-        // Process the detected barcode
-        Quagga.onDetected(function(data) {
-            if (!barcodeDetected) {
-                barcodeDetected = true;
-                const code = data.codeResult.code;
-                displayResult(code);
-                stopScanner();
-            }
-        });
+    // Start QR code scanner
+    function scanQRCode() {
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
 
-        // Function to scan QR codes
-        function scanQRCode() {
-            if (qrCodeDetected) return;
-
-            qrCanvas.width = videoElement.videoWidth;
-            qrCanvas.height = videoElement.videoHeight;
-
-            qrContext.drawImage(videoElement, 0, 0, qrCanvas.width, qrCanvas.height);
-            const imageData = qrContext.getImageData(0, 0, qrCanvas.width, qrCanvas.height);
-
-            const qrCode = jsQR(imageData.data, qrCanvas.width, qrCanvas.height);
+        function scan() {
+            canvas.width = scannerPreview.videoWidth;
+            canvas.height = scannerPreview.videoHeight;
+            context.drawImage(scannerPreview, 0, 0, canvas.width, canvas.height);
+            const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+            const qrCode = jsQR(imageData.data, canvas.width, canvas.height);
 
             if (qrCode) {
-                qrCodeDetected = true;
-                displayResult(qrCode.data);
-                stopScanner();
-            } else if (!barcodeDetected) {
-                requestAnimationFrame(scanQRCode); // Keep scanning for QR codes
+                const { topLeft, bottomRight } = qrCode.location;
+                const box = {
+                    x: topLeft.x,
+                    y: topLeft.y,
+                    width: bottomRight.x - topLeft.x,
+                    height: bottomRight.y - topLeft.y
+                };
+                highlightBox.style.width = box.width + 'px';
+                highlightBox.style.height = box.height + 'px';
+                highlightBox.style.left = box.x + 'px';
+                highlightBox.style.top = box.y + 'px';
+                highlightBox.style.display = 'block';
+
+                // Display QR code result and timestamp
+                scannedCodeElement.innerText = qrCode.data;
+                const currentTime = new Date().toLocaleString();
+                scanTimeElement.innerText = currentTime;
+                scannedInfo.style.display = 'block';
+
+                // Adjust the focus box dynamically
+                focusBox.style.width = box.width + 'px';
+                focusBox.style.height = box.height + 'px';
+                focusBox.style.left = box.x + 'px';
+                focusBox.style.top = box.y + 'px';
+            } else {
+                highlightBox.style.display = 'none';
             }
+            requestAnimationFrame(scan); // Continue scanning
         }
+        scan();
+    }
 
-        // Display the scanned code and time
-        function displayResult(scannedCode) {
-            const currentTime = getCurrentDateTime();
-            codeElement.innerText = scannedCode;
-            timeElement.innerText = currentTime;
-        }
-
-        // Start both QR and barcode scanning
-        startScanButton.addEventListener('click', () => {
-            barcodeDetected = false;
-            qrCodeDetected = false;
-            startCameraPreview();
-            startScanner();
+    // Start barcode scanner
+    function startBarcodeScanner() {
+        Quagga.init({
+            inputStream: {
+                name: "Live",
+                type: "LiveStream",
+                target: scannerPreview, // The video element that displays the camera feed
+                constraints: {
+                    facingMode: "environment" // Use the back camera if available
+                }
+            },
+            decoder: {
+                readers: ["code_128_reader", "ean_reader", "ean_8_reader", "upc_reader"] // Barcode formats to decode
+            }
+        }, function (err) {
+            if (err) {
+                console.error(err);
+                return;
+            }
+            Quagga.start();
         });
-    </script>
+
+        Quagga.onDetected(function (data) {
+            const code = data.codeResult.code;
+            const { x, y, width, height } = data.codeResult.box[0];
+            highlightBox.style.width = width + 'px';
+            highlightBox.style.height = height + 'px';
+            highlightBox.style.left = x + 'px';
+            highlightBox.style.top = y + 'px';
+            highlightBox.style.display = 'block';
+
+            // Display barcode result and timestamp
+            scannedCodeElement.innerText = code;
+            const currentTime = new Date().toLocaleString();
+            scanTimeElement.innerText = currentTime;
+            scannedInfo.style.display = 'block';
+
+            // Adjust the focus box dynamically
+            focusBox.style.width = width + 'px';
+            focusBox.style.height = height + 'px';
+            focusBox.style.left = x + 'px';
+            focusBox.style.top = y + 'px';
+        });
+    }
+
+    // Start scanner when button is clicked
+    startScanButton.addEventListener('click', startScanner);
+</script>
 
 </body>
 </html>
