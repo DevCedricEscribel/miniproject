@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Barcode Scanner with Live Camera Preview</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
+    <style>
+        #scanner-container {
+            display: none; /* Hidden by default */
+            width: 100%;
+            max-width: 500px;
+            margin: 20px auto;
+            position: relative;
+        }
+        video {
+            width: 100%;
+            height: auto;
+            border: 2px solid #000;
+        }
+        #overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: 2px dashed red; /* Simulates a targeting frame */
+            pointer-events: none; /* Allows clicks to pass through */
+        }
+        button {
+            display: block;
+            margin: 20px auto;
+            padding: 10px 20px;
+            font-size: 16px;
+        }
+        #result {
+            text-align: center;
+            font-size: 18px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Barcode Scanner with Camera Preview</h1>
+
+    <!-- Button to open the scanner -->
+    <button id="start-scan">Start Barcode Scan</button>
+
+    <!-- Container for the live preview -->
+    <div id="scanner-container">
+        <video id="scanner"></video>
+        <!-- Optional overlay for visual feedback -->
+        <div id="overlay"></div>
+    </div>
+
+    <!-- Result and Date/Time Display -->
+    <div id="result">
+        <h3>Scanned Barcode:</h3>
+        <p id="barcode"></p>
+        <h3>Scanned Time:</h3>
+        <p id="time"></p>
+    </div>
+
+    <script>
+        const scannerContainer = document.getElementById('scanner-container');
+        const startScanButton = document.getElementById('start-scan');
+        const barcodeElement = document.getElementById('barcode');
+        const timeElement = document.getElementById('time');
+        const videoElement = document.getElementById('scanner');
+
+        // Function to start the barcode scanner and display the camera preview
+        function startScanner() {
+            Quagga.init({
+                inputStream: {
+                    name: "Live",
+                    type: "LiveStream",
+                    target: videoElement, // The video element that displays the camera
+                    constraints: {
+                        facingMode: "environment", // Use the back camera if available
+                    }
+                },
+                decoder: {
+                    readers: ["code_128_reader", "ean_reader", "ean_8_reader", "upc_reader"] // Barcode formats to decode
+                }
+            }, function (err) {
+                if (err) {
+                    console.error(err);
+                    return;
+                }
+                Quagga.start();
+                scannerContainer.style.display = 'block'; // Show the live preview container
+                startScanButton.innerText = 'Scanning...'; // Update button text
+                startScanButton.disabled = true; // Disable button while scanning
+            });
+        }
+
+        // Function to stop the scanner
+        function stopScanner() {
+            Quagga.stop();
+            scannerContainer.style.display = 'none'; // Hide the live preview
+            startScanButton.innerText = 'Start Barcode Scan'; // Reset button text
+            startScanButton.disabled = false; // Enable the button again
+        }
+
+        // Process the detected barcode and show the result
+        Quagga.onDetected(function(data) {
+            const code = data.codeResult.code;
+            const now = new Date();
+            const time = `${now.toLocaleDateString()} ${now.toLocaleTimeString()}`;
+
+            // Display the scanned barcode and the current date/time
+            barcodeElement.innerText = code;
+            timeElement.innerText = time;
+
+            stopScanner(); // Stop the scanner after a barcode is detected (optional)
+        });
+
+        // Event listener for the "Start Barcode Scan" button
+        startScanButton.addEventListener('click', startScanner);
+    </script>
+
+</body>
+</html>
