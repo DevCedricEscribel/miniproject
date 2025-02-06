@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Will You Be My Valentine? ❤️</title>
+    <style>
+      body {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        background: linear-gradient(135deg, #ffcccc, #ffe6e6);
+        font-family: "Arial", sans-serif;
+        overflow: hidden;
+      }
+      h1 {
+        font-size: 3rem;
+        color: #e60073;
+        margin-bottom: 20px;
+        animation: pulse 2s infinite;
+      }
+      .button-container {
+        display: flex;
+        gap: 30px;
+        margin-bottom: 20px;
+      }
+      button {
+        padding: 15px 40px;
+        font-size: 1.5rem;
+        border: none;
+        border-radius: 15px;
+        cursor: pointer;
+        transition: all 0.3s ease-in-out;
+        box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
+      }
+      .yes-btn {
+        background-color: #ff4d4d;
+        color: white;
+        animation: bounce 1.5s infinite;
+      }
+      .no-btn {
+        background-color: #999;
+        color: white;
+      }
+      .countdown {
+        font-size: 2rem;
+        color: #ff004d;
+        margin-top: 20px;
+        display: none;
+      }
+      img {
+        position: absolute;
+        animation: float 3s ease-in-out infinite;
+      }
+      @keyframes pulse {
+        0% {
+          transform: scale(1);
+        }
+        50% {
+          transform: scale(1.1);
+        }
+        100% {
+          transform: scale(1);
+        }
+      }
+      @keyframes bounce {
+        0%,
+        100% {
+          transform: translateY(0);
+        }
+        50% {
+          transform: translateY(-10px);
+        }
+      }
+      @keyframes float {
+        0% {
+          transform: translateY(0) rotate(0);
+          opacity: 1;
+        }
+        50% {
+          transform: translateY(-200px) rotate(360deg);
+          opacity: 0.8;
+        }
+        100% {
+          transform: translateY(-400px) rotate(720deg);
+          opacity: 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <h1 id="title">Will you be my Valentine? ❤️</h1>
+    <div class="button-container">
+      <button class="yes-btn">Yes</button>
+      <button class="no-btn">No</button>
+    </div>
+    <div class="countdown">
+      Valentine's Day Countdown: <span id="timer"></span>
+    </div>
+
+    <!-- Sound Effects -->
+    <audio
+      id="yesSound"
+      src="https://www.fesliyanstudios.com/play-mp3/387"
+    ></audio>
+    <!-- Romantic sound -->
+    <audio
+      id="noSound"
+      src="https://www.fesliyanstudios.com/play-mp3/400"
+    ></audio>
+    <!-- Funny nope sound -->
+
+    <script>
+      const yesBtn = document.querySelector(".yes-btn");
+      const noBtn = document.querySelector(".no-btn");
+      const countdownDiv = document.querySelector(".countdown");
+      const timerSpan = document.getElementById("timer");
+      const yesSound = document.getElementById("yesSound");
+      const noSound = document.getElementById("noSound");
+      const title = document.getElementById("title");
+
+      // List of multiple image URLs
+      const imageUrls = [
+        "./US/1.jpg",
+        "./US/2.jpg",
+        "./US/3.jpg",
+        "./US/4.jpg",
+        "./US/5.webp",
+        "./US/6.jpeg",
+      ];
+
+      let noClickCount = 0;
+
+      function createConfetti() {
+        const confetti = document.createElement("div");
+        confetti.classList.add("confetti");
+        confetti.style.left = Math.random() * 100 + "vw";
+        confetti.style.backgroundColor = `hsl(${
+          Math.random() * 360
+        }, 100%, 70%)`;
+        document.body.appendChild(confetti);
+        setTimeout(() => confetti.remove(), 2000);
+      }
+
+      function createFloatingImage() {
+        const floatingImg = document.createElement("img");
+
+        // Choose a random image from the list of URLs
+        const randomImage =
+          imageUrls[Math.floor(Math.random() * imageUrls.length)];
+        floatingImg.src = randomImage;
+        floatingImg.style.width = "100px"; // Adjust the size
+        floatingImg.style.left = Math.random() * 90 + "vw";
+        floatingImg.style.top = "100vh";
+        document.body.appendChild(floatingImg);
+
+        // Animate the image upwards
+        floatingImg.style.animation = "float 3s ease-in-out infinite";
+      }
+
+      function startCountdown() {
+        countdownDiv.style.display = "block";
+        const valentineDate = new Date("February 14, 2025 00:00:00").getTime();
+
+        const updateCountdown = setInterval(() => {
+          const now = new Date().getTime();
+          const distance = valentineDate - now;
+
+          if (distance <= 0) {
+            clearInterval(updateCountdown);
+            timerSpan.textContent = "Happy Valentine's Day! 🎉";
+          } else {
+            const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+            const hours = Math.floor(
+              (distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
+            );
+            const minutes = Math.floor(
+              (distance % (1000 * 60 * 60)) / (1000 * 60)
+            );
+            const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+            timerSpan.textContent = `${days}d ${hours}h ${minutes}m ${seconds}s`;
+          }
+        }, 1000);
+      }
+
+      noBtn.addEventListener("click", () => {
+        noClickCount++;
+        noBtn.style.fontSize = `${
+          parseFloat(window.getComputedStyle(noBtn).fontSize) - 2
+        }px`;
+        yesBtn.style.fontSize = `${
+          parseFloat(window.getComputedStyle(yesBtn).fontSize) + 2
+        }px`;
+        noBtn.style.animation = "shake 0.5s";
+        noSound.play();
+
+        if (parseFloat(noBtn.style.fontSize) <= 8) {
+          noBtn.disabled = true;
+          noBtn.style.display = "none";
+          const gif = document.createElement("img");
+          gif.src =
+            "https://media.giphy.com/media/aNFT7eG2rIKK715uLk/giphy.gif?cid=790b7611bqibsio8q3miylryrt4p2x6alposvfnumldsjwl7&ep=v1_gifs_search&rid=giphy.gif&ct=g";
+          gif.style.maxWidth = "300px";
+          gif.style.borderRadius = "15px";
+          gif.id = "noGif";
+          document.body.appendChild(gif);
+
+          // Hide the GIF after 5 seconds
+          setTimeout(() => gif.remove(), 5000);
+        }
+
+        // Change the title after multiple "No" clicks
+        if (noClickCount >= 8) {
+          title.textContent = "You will be my Valentine! ❤️";
+        }
+      });
+
+      yesBtn.addEventListener("click", () => {
+        yesBtn.style.display = "none";
+        noBtn.style.display = "none";
+        alert("Yay! 🥰 Thank you for being my Valentine!");
+        yesSound.play();
+        for (let i = 0; i < 100; i++) {
+          setTimeout(createConfetti, i * 20);
+        }
+        for (let i = 0; i < 20; i++) {
+          setTimeout(createFloatingImage, i * 300); // Create floating images
+        }
+        startCountdown(); // Start the countdown after "Yes" is clicked
+      });
+    </script>
+  </body>
+</html>

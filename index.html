@@ -1,53 +1,136 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-    <head>
-        <title>Title</title>
-        <!-- Required meta tags -->
-        <meta charset="utf-8" />
-        <meta
-            name="viewport"
-            content="width=device-width, initial-scale=1, shrink-to-fit=no"
-        />
+  <head>
+    <title>Mini Project Gallery</title>
+    <!-- Required meta tags -->
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, shrink-to-fit=no"
+    />
 
-        <!-- Bootstrap CSS v5.2.1 -->
-        <link
-            href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
-            rel="stylesheet"
-            integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN"
-            crossorigin="anonymous"
-        />
-    </head>
+    <!-- Bootstrap CSS v5.2.1 -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+      integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN"
+      crossorigin="anonymous"
+    />
+  </head>
 
-    <body>
-        <header>
-            <!-- place navbar here -->
-        </header>
-        <main>
-            <div class="btn-group">
-                <a href="valentines/valentine.html" class="btn btn-primary active" aria-current="page">Valentine</a>
-                <a href="./qrcode.html" class="btn btn-primary">Biometrics</a>
-                <a href="#" class="btn btn-primary">Link</a>
-              </div>
+  <body>
+    <header>
+      <!-- Navbar Section -->
+      <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <div class="container-fluid">
+          <a class="navbar-brand" href="#">Project Gallery</a>
+          <button
+            class="navbar-toggler"
+            type="button"
+            data-bs-toggle="collapse"
+            data-bs-target="#navbarNav"
+            aria-controls="navbarNav"
+            aria-expanded="false"
+            aria-label="Toggle navigation"
+          >
+            <span class="navbar-toggler-icon"></span>
+          </button>
+          <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav">
+              <li class="nav-item">
+                <a class="nav-link active" aria-current="page" href="#">Home</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="valentines/valentine.html"
+                  >Valentine</a
+                >
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="./qrcode.html">Biometrics</a>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </nav>
+    </header>
 
-        </main>
+    <main class="container mt-4">
+      <h2 class="text-center mb-4">Mini Project Gallery</h2>
 
+      <div class="row row-cols-1 row-cols-md-3 g-4">
+        <!-- Project 1 -->
+        <div class="col">
+          <div class="card h-100">
+            <img src="./image/qr.png" class="card-img-top" alt="Project 1" />
+            <div class="card-body">
+              <h5 class="card-title">Qr Code</h5>
+              <p class="card-text">Qr Code Project</p>
+            </div>
+            <div class="card-footer">
+              <a href="./qrcode/index2.html" class="btn btn-primary"
+                >View Project</a
+              >
+            </div>
+          </div>
+        </div>
 
+        <!-- Project 2 -->
+        <div class="col">
+          <div class="card h-100">
+            <img
+              src="./image/valentines.png"
+              class="card-img-top"
+              alt="Project 2"
+            />
+            <div class="card-body">
+              <h5 class="card-title">Valentines 1</h5>
+              <p class="card-text">Valentines Project foer my bebe</p>
+            </div>
+            <div class="card-footer">
+              <a href="./valentines/valentine.html" class="btn btn-primary"
+                >View Project</a
+              >
+            </div>
+          </div>
+        </div>
 
+        <!-- Project 3 -->
+        <div class="col">
+          <div class="card h-100">
+            <img
+              src="./image/valentines2.png"
+              class="card-img-top"
+              alt="Project 3"
+            />
+            <div class="card-body">
+              <h5 class="card-title">Valentines 2025</h5>
+              <p class="card-text">2025 Valentines Project for my bebe</p>
+            </div>
+            <div class="card-footer">
+              <a href="./Valentines2025/index.html" class="btn btn-primary"
+                >View Project</a
+              >
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
 
-        <footer>
-            <!-- place footer here -->
-        </footer>
-        <!-- Bootstrap JavaScript Libraries -->
-        <script
-            src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"
-            integrity="sha384-I7E8VVD/ismYTF4hNIPjVp/Zjvgyol6VFvRkX/vR+Vc4jQkC+hVqc2pM8ODewa9r"
-            crossorigin="anonymous"
-        ></script>
+    <footer class="bg-light text-center py-4 mt-4">
+      <p>&copy; 2025 Project Gallery. All Rights Reserved.</p>
+    </footer>
 
-        <script
-            src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.min.js"
-            integrity="sha384-BBtl+eGJRgqQAUMxJ7pMwbEyER4l1g+O15P+16Ep7Q9Q+zqX6gSbd85u4mG4QzX+"
-            crossorigin="anonymous"
-        ></script>
-    </body>
+    <!-- Bootstrap JavaScript Libraries -->
+    <script
+      src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"
+      integrity="sha384-I7E8VVD/ismYTF4hNIPjVp/Zjvgyol6VFvRkX/vR+Vc4jQkC+hVqc2pM8ODewa9r"
+      crossorigin="anonymous"
+    ></script>
+
+    <script
+      src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.min.js"
+      integrity="sha384-BBtl+eGJRgqQAUMxJ7pMwbEyER4l1g+O15P+16Ep7Q9Q+zqX6gSbd85u4mG4QzX+"
+      crossorigin="anonymous"
+    ></script>
+  </body>
 </html>
