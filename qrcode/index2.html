@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Code and Barcode Scanner</title>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr/dist/jsQR.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/quagga/dist/quagga.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode/dist/JsBarcode.all.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        input, select, button {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            box-sizing: border-box;
+        }
+        canvas {
+            display: block;
+            margin: 20px auto;
+        }
+        video {
+            width: 100%;
+            height: auto;
+            border: 2px solid #000;
+        }
+        #scanner-container {
+            display: none;
+            width: 100%;
+            max-width: 500px;
+            margin: 20px auto;
+            position: relative;
+        }
+        #scanner-preview {
+            width: 100%;
+            height: auto;
+        }
+        #highlight-box {
+            position: absolute;
+            border: 2px solid green;
+            pointer-events: none;
+            display: none;
+        }
+        #result {
+            text-align: center;
+            font-size: 18px;
+            margin-top: 20px;
+        }
+        #scannedInfo {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>QR Code and Barcode Generator</h1>
+
+    <label for="inputText">Enter Text:</label>
+    <input type="text" id="inputText" placeholder="Enter text for QR/Barcode" />
+
+    <label for="codeType">Choose Code Type:</label>
+    <select id="codeType">
+        <option value="qr">QR Code</option>
+        <option value="barcode">Barcode</option>
+    </select>
+
+    <button onclick="generateCode()">Generate</button>
+
+    <!-- QR Code -->
+    <div id="qrCodeContainer" style="display:none;">
+        <h2>QR Code:</h2>
+        <div id="qrCode"></div>
+    </div>
+
+    <!-- Barcode -->
+    <div id="barcodeContainer" style="display:none;">
+        <h2>Barcode:</h2>
+        <svg id="barcode"></svg>
+    </div>
+
+    <!-- Scanner Section -->
+    <h1>Scanner</h1>
+    <button id="startScanButton">Start Scanner</button>
+    <div id="scanner-container">
+        <video id="scanner-preview" autoplay></video>
+        <div id="highlight-box"></div>
+    </div>
+    <div id="result">
+        <h3>Scanned Code:</h3>
+        <p id="scannedCode"></p>
+    </div>
+    <div id="scannedInfo">
+        <p><strong>Scanned at:</strong> <span id="scanTime"></span></p>
+    </div>
+</div>
+
+<script>
+    const scannerContainer = document.getElementById('scanner-container');
+    const startScanButton = document.getElementById('startScanButton');
+    const scannerPreview = document.getElementById('scanner-preview');
+    const highlightBox = document.getElementById('highlight-box');
+    const scannedCodeElement = document.getElementById('scannedCode');
+    const scanTimeElement = document.getElementById('scanTime');
+    const scannedInfo = document.getElementById('scannedInfo');
+
+    // QR Code and Barcode generator
+    function generateCode() {
+        const inputText = document.getElementById("inputText").value;
+        const codeType = document.getElementById("codeType").value;
+
+        // Hide both QR code and barcode containers
+        document.getElementById("qrCodeContainer").style.display = 'none';
+        document.getElementById("barcodeContainer").style.display = 'none';
+
+        if (inputText.trim() === "") {
+            alert("Please enter some text.");
+            return;
+        }
+
+        if (codeType === "qr") {
+            // Show QR code container
+            document.getElementById("qrCodeContainer").style.display = 'block';
+
+            // Generate QR code
+            QRCode.toCanvas(document.getElementById("qrCode"), inputText, function (error) {
+                if (error) {
+                    console.error(error);
+                }
+            });
+        } else if (codeType === "barcode") {
+            // Show Barcode container
+            document.getElementById("barcodeContainer").style.display = 'block';
+
+            // Generate barcode
+            JsBarcode("#barcode", inputText, {
+                format: "CODE128",
+                lineColor: "#0aa",
+                width: 2,
+                height: 40,
+                displayValue: true
+            });
+        }
+    }
+
+    // Start scanner
+    function startScanner() {
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+            .then(function (stream) {
+                scannerPreview.srcObject = stream;
+                scannerContainer.style.display = 'block'; // Show the live camera feed
+                scanQRCode(); // Start QR code scanning
+                startBarcodeScanner(); // Start barcode scanning with QuaggaJS
+            })
+            .catch(function (err) {
+                console.error("Camera access denied: ", err);
+            });
+    }
+
+    // Start QR code scanner
+    function scanQRCode() {
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+
+        function scan() {
+            canvas.width = scannerPreview.videoWidth;
+            canvas.height = scannerPreview.videoHeight;
+            context.drawImage(scannerPreview, 0, 0, canvas.width, canvas.height);
+            const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+            const qrCode = jsQR(imageData.data, canvas.width, canvas.height);
+
+            if (qrCode) {
+                const { topLeft, bottomRight } = qrCode.location;
+                const box = {
+                    x: topLeft.x,
+                    y: topLeft.y,
+                    width: bottomRight.x - topLeft.x,
+                    height: bottomRight.y - topLeft.y
+                };
+                highlightBox.style.width = box.width + 'px';
+                highlightBox.style.height = box.height + 'px';
+                highlightBox.style.left = box.x + 'px';
+                highlightBox.style.top = box.y + 'px';
+                highlightBox.style.display = 'block';
+
+                // Display QR code result and timestamp
+                scannedCodeElement.innerText = qrCode.data;
+                const currentTime = new Date().toLocaleString();
+                scanTimeElement.innerText = currentTime;
+                scannedInfo.style.display = 'block';
+            } else {
+                highlightBox.style.display = 'none';
+            }
+            requestAnimationFrame(scan); // Continue scanning
+        }
+        scan();
+    }
+
+    // Start barcode scanner
+    function startBarcodeScanner() {
+        Quagga.init({
+            inputStream: {
+                name: "Live",
+                type: "LiveStream",
+                target: scannerPreview, // The video element that displays the camera feed
+                constraints: {
+                    facingMode: "environment" // Use the back camera if available
+                }
+            },
+            decoder: {
+                readers: ["code_128_reader", "ean_reader", "ean_8_reader", "upc_reader"] // Barcode formats to decode
+            }
+        }, function (err) {
+            if (err) {
+                console.error(err);
+                return;
+            }
+            Quagga.start();
+        });
+
+        Quagga.onDetected(function (data) {
+            const code = data.codeResult.code;
+            const { x, y, width, height } = data.codeResult.box[0];
+            highlightBox.style.width = width + 'px';
+            highlightBox.style.height = height + 'px';
+            highlightBox.style.left = x + 'px';
+            highlightBox.style.top = y + 'px';
+            highlightBox.style.display = 'block';
+
+            // Display barcode result and timestamp
+            scannedCodeElement.innerText = code;
+            const currentTime = new Date().toLocaleString();
+            scanTimeElement.innerText = currentTime;
+            scannedInfo.style.display = 'block';
+        });
+    }
+
+    // Start the scanner when the button is clicked
+    startScanButton.addEventListener('click', startScanner);
+</script>
+
+</body>
+</html>
