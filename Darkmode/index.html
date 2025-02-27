@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>House with Flashlight Effect</title>
+    <style>
+      body,
+      html {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        overflow: hidden;
+        font-family: Arial, sans-serif;
+        background-color: #121212; /* Dark background */
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        cursor: none;
+      }
+
+      /* The house container, fully visible */
+      .house {
+        position: relative;
+        width: 80%;
+        height: 80%;
+        background-color: #aaa;
+        border-radius: 10px;
+        box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+        z-index: 1;
+        display: block;
+      }
+
+      /* Rooms inside the house */
+      .room {
+        width: 150px;
+        height: 150px;
+        margin: 30px;
+        background-color: #fff;
+        border-radius: 10px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        position: absolute;
+      }
+
+      /* Positions for rooms */
+      .room:nth-child(1) {
+        top: 20%;
+        left: 20%;
+      }
+
+      .room:nth-child(2) {
+        top: 20%;
+        left: 50%;
+      }
+
+      .room:nth-child(3) {
+        top: 50%;
+        left: 20%;
+      }
+
+      .room:nth-child(4) {
+        top: 50%;
+        left: 50%;
+      }
+
+      /* Flashlight effect */
+      .flashlight {
+        position: absolute;
+        width: 300px;
+        height: 300px;
+        border-radius: 50%;
+        background: radial-gradient(
+          circle,
+          rgba(255, 255, 255, 0.8) 0%,
+          rgba(0, 0, 0, 0.7) 80%
+        );
+        pointer-events: none;
+        transform: translate(-50%, -50%);
+        z-index: 10;
+        opacity: 1;
+      }
+
+      /* Custom cursor */
+      .cursor {
+        position: fixed;
+        top: 0;
+        left: 0;
+        pointer-events: none;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background-color: #ffffff;
+        transform: translate(-50%, -50%);
+        transition: width 0.2s, height 0.2s;
+        z-index: 11;
+      }
+
+      /* Overlay for the flashlight effect */
+      .overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.9);
+        pointer-events: none;
+        z-index: 5;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Overlay that darkens the background (except where flashlight is) -->
+    <div class="overlay"></div>
+
+    <!-- House container -->
+    <div class="house">
+      <!-- Rooms inside the house -->
+      <div class="room"></div>
+      <div class="room"></div>
+      <div class="room"></div>
+      <div class="room"></div>
+    </div>
+
+    <!-- Flashlight effect -->
+    <div class="flashlight" id="flashlight"></div>
+
+    <!-- Custom Cursor -->
+    <div class="cursor" id="cursor"></div>
+
+    <script>
+      const flashlight = document.getElementById("flashlight");
+      const cursor = document.getElementById("cursor");
+      const overlay = document.querySelector(".overlay");
+
+      // Mouse move event to move flashlight and custom cursor
+      document.addEventListener("mousemove", (event) => {
+        const x = event.pageX;
+        const y = event.pageY;
+
+        // Update flashlight position
+        flashlight.style.left = `${x}px`;
+        flashlight.style.top = `${y}px`;
+
+        // Update custom cursor position
+        cursor.style.left = `${x}px`;
+        cursor.style.top = `${y}px`;
+
+        // Make the cursor bigger when hovering over the house
+        if (event.target.closest(".house")) {
+          cursor.style.width = "30px";
+          cursor.style.height = "30px";
+        } else {
+          cursor.style.width = "16px";
+          cursor.style.height = "16px";
+        }
+
+        // Create flashlight effect by cutting out a portion of the overlay
+        overlay.style.clipPath = `circle(${
+          flashlight.offsetWidth / 2
+        }px at ${x}px ${y}px)`;
+      });
+    </script>
+  </body>
+</html>
