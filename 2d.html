@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>2D Gown AR Design with Capture</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    #user-image, #captured-image {
+      max-width: 100%;
+      height: auto;
+      display: block;
+      position: relative;
+    }
+    #gown-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: auto;
+      pointer-events: none;
+    }
+    #image-container {
+      position: relative;
+      display: inline-block;
+    }
+    video, canvas {
+      max-width: 100%;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container py-5">
+  <h1 class="text-center mb-4">2D Gown Design <span class="text-primary">AR</span></h1>
+
+  <!-- Upload section -->
+  <div class="text-center mb-3">
+    <div class="upload-btn-wrapper">
+      <button class="btn btn-primary">Upload Photo</button>
+      <input type="file" id="image-upload" accept="image/*">
+    </div>
+    <span class="mx-2">or</span>
+    <button class="btn btn-success" id="start-camera">Use Camera</button>
+  </div>
+
+  <!-- Video preview & capture -->
+  <div class="text-center">
+    <video id="video" autoplay playsinline style="display:none;"></video>
+    <button class="btn btn-danger mt-2" id="take-photo" style="display:none;">Capture Photo</button>
+    <button class="btn btn-secondary mt-2" id="retake-photo" style="display:none;">Retake</button>
+  </div>
+
+  <!-- Image display with overlay -->
+  <div class="mt-4 text-center">
+    <div id="image-container">
+      <img id="user-image" src="" alt="User Image" style="display:none;">
+      <img id="gown-overlay" src="gown.png" alt="Gown" style="display:none;">
+    </div>
+  </div>
+</div>
+
+<!-- Bootstrap and JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+  const imageUpload = document.getElementById('image-upload');
+  const userImage = document.getElementById('user-image');
+  const gownOverlay = document.getElementById('gown-overlay');
+  const imageContainer = document.getElementById('image-container');
+
+  const startCameraBtn = document.getElementById('start-camera');
+  const takePhotoBtn = document.getElementById('take-photo');
+  const retakePhotoBtn = document.getElementById('retake-photo');
+  const video = document.getElementById('video');
+
+  let stream;
+
+  // Upload photo logic
+  imageUpload.addEventListener('change', function(event) {
+    const file = event.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        showImage(e.target.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  });
+
+  // Start camera
+  startCameraBtn.addEventListener('click', async () => {
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      video.srcObject = stream;
+      video.style.display = 'block';
+      takePhotoBtn.style.display = 'inline-block';
+      retakePhotoBtn.style.display = 'none';
+      userImage.style.display = 'none';
+      gownOverlay.style.display = 'none';
+    } catch (error) {
+      alert('Could not access camera: ' + error.message);
+    }
+  });
+
+  // Take photo
+  takePhotoBtn.addEventListener('click', () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0);
+
+    const dataUrl = canvas.toDataURL('image/png');
+    showImage(dataUrl);
+
+    // Stop camera
+    stream.getTracks().forEach(track => track.stop());
+    video.style.display = 'none';
+    takePhotoBtn.style.display = 'none';
+    retakePhotoBtn.style.display = 'inline-block';
+  });
+
+  // Retake photo
+  retakePhotoBtn.addEventListener('click', () => {
+    startCameraBtn.click();
+  });
+
+  // Show image and overlay gown
+  function showImage(src) {
+    userImage.src = src;
+    userImage.style.display = 'block';
+    gownOverlay.style.display = 'block';
+
+    // Adjust overlay dimensions
+    userImage.onload = () => {
+      gownOverlay.style.width = userImage.width + 'px';
+      gownOverlay.style.height = userImage.height + 'px';
+    };
+  }
+</script>
+</body>
+</html>
