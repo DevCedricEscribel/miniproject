@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <title>Gown Previewer with MoveNet + Controls + Rotate Camera</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        background: #f8f9fa;
+        font-family: "Inter", sans-serif;
+      }
+      .preview-container {
+        position: relative;
+        width: 100%;
+        max-width: 600px;
+        margin: auto;
+        border-radius: 15px;
+        overflow: hidden;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+      }
+      video,
+      canvas {
+        width: 100%;
+        height: auto;
+        display: block;
+        border-radius: 15px;
+      }
+      canvas {
+        position: absolute;
+        top: 0;
+        left: 0;
+        pointer-events: none;
+      }
+      .controls {
+        padding: 20px;
+        background: #fff;
+        border-radius: 15px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+        margin-top: 20px;
+      }
+      .form-range {
+        width: 100%;
+      }
+    </style>
+  </head>
+  <body
+    class="d-flex flex-column min-vh-100 justify-content-center align-items-center p-3"
+  >
+    <div class="container-fluid text-center my-4">
+      <h1 class="display-5 fw-bold text-secondary">Gown Previewer</h1>
+      <p class="lead text-muted">MoveNet + Manual Controls + Rotate Camera</p>
+    </div>
+
+    <div class="preview-container">
+      <video id="video" autoplay playsinline muted></video>
+      <canvas id="canvas"></canvas>
+    </div>
+
+    <!-- Upload + Controls -->
+    <div class="container mt-4 controls">
+      <div class="mb-3 d-grid gap-2">
+        <input type="file" id="imageInput" accept="image/*" class="d-none" />
+        <button class="btn btn-primary" id="uploadBtn">
+          Upload Gown Image
+        </button>
+        <button class="btn btn-dark" id="rotateCamBtn">Rotate Camera</button>
+      </div>
+
+      <label class="form-label">Scale</label>
+      <input
+        type="range"
+        class="form-range"
+        id="scaleSlider"
+        min="0.5"
+        max="3"
+        step="0.1"
+        value="1"
+      />
+
+      <label class="form-label">Vertical Offset</label>
+      <input
+        type="range"
+        class="form-range"
+        id="yOffsetSlider"
+        min="-200"
+        max="200"
+        step="5"
+        value="0"
+      />
+
+      <label class="form-label">Horizontal Offset</label>
+      <input
+        type="range"
+        class="form-range"
+        id="xOffsetSlider"
+        min="-200"
+        max="200"
+        step="5"
+        value="0"
+      />
+
+      <label class="form-label">Rotation Adjustment</label>
+      <input
+        type="range"
+        class="form-range"
+        id="rotationSlider"
+        min="-45"
+        max="45"
+        step="1"
+        value="0"
+      />
+    </div>
+
+    <!-- TF.js + MoveNet -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-core"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-converter"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-webgl"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection"></script>
+
+    <script>
+      const video = document.getElementById("video");
+      const canvas = document.getElementById("canvas");
+      const ctx = canvas.getContext("2d");
+      const uploadBtn = document.getElementById("uploadBtn");
+      const imageInput = document.getElementById("imageInput");
+      const rotateCamBtn = document.getElementById("rotateCamBtn");
+
+      let gownImage = null;
+      let detector,
+        poses = [];
+      let currentFacingMode = "user"; // default = front camera
+
+      // adjustment values
+      let scaleFactor = 1,
+        xOffset = 0,
+        yOffset = 0,
+        rotationAdjust = 0;
+
+      document
+        .getElementById("scaleSlider")
+        .addEventListener(
+          "input",
+          (e) => (scaleFactor = parseFloat(e.target.value))
+        );
+      document
+        .getElementById("xOffsetSlider")
+        .addEventListener("input", (e) => (xOffset = parseInt(e.target.value)));
+      document
+        .getElementById("yOffsetSlider")
+        .addEventListener("input", (e) => (yOffset = parseInt(e.target.value)));
+      document
+        .getElementById("rotationSlider")
+        .addEventListener(
+          "input",
+          (e) => (rotationAdjust = (parseInt(e.target.value) * Math.PI) / 180)
+        );
+
+      async function setupCamera() {
+        if (video.srcObject) {
+          video.srcObject.getTracks().forEach((track) => track.stop()); // stop old stream
+        }
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: currentFacingMode },
+        });
+        video.srcObject = stream;
+        return new Promise(
+          (resolve) => (video.onloadedmetadata = () => resolve(video))
+        );
+      }
+
+      async function loadMoveNet() {
+        const detectorConfig = {
+          modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING,
+        };
+        detector = await poseDetection.createDetector(
+          poseDetection.SupportedModels.MoveNet,
+          detectorConfig
+        );
+      }
+
+      function drawSkeleton(keypoints) {
+        // const adjacent = poseDetection.util.getAdjacentPairs(
+        //   poseDetection.SupportedModels.MoveNet
+        // );
+        // ctx.strokeStyle = "none";
+        // ctx.lineWidth = 2;
+        // adjacent.forEach(([i, j]) => {
+        //   const a = keypoints[i],
+        //     b = keypoints[j];
+        //   if (a.score > 0.3 && b.score > 0.3) {
+        //     ctx.beginPath();
+        //     ctx.moveTo(a.x, a.y);
+        //     ctx.lineTo(b.x, b.y);
+        //     ctx.stroke();
+        //   }
+        // });
+        // keypoints.forEach((kp) => {
+        //   if (kp.score > 0.3) {
+        //     ctx.fillStyle = "none";
+        //     ctx.beginPath();
+        //     ctx.arc(kp.x, kp.y, 5, 0, 2 * Math.PI);
+        //     ctx.fill();
+        //   }
+        // });
+      }
+
+      function drawGown(keypoints) {
+        const get = (part) => keypoints.find((k) => k.name === part);
+        const L = get("left_shoulder"),
+          R = get("right_shoulder");
+        const LH = get("left_hip"),
+          RH = get("right_hip");
+
+        if (L && R && L.score > 0.3 && R.score > 0.3) {
+          const shoulderDist = Math.hypot(L.x - R.x, L.y - R.y);
+          const midX = (L.x + R.x) / 2,
+            midY = (L.y + R.y) / 2;
+          const baseAngle = Math.atan2(L.y - R.y, L.x - R.x);
+
+          // Gown width strictly based on shoulder span
+          const gownWidth = shoulderDist * 2.0 * scaleFactor;
+
+          // Height estimated from shoulders to hips if detected, otherwise shoulderDist-based
+          let gownHeight = shoulderDist * 3.5 * scaleFactor;
+          if (LH && RH && LH.score > 0.3 && RH.score > 0.3) {
+            const hipMidY = (LH.y + RH.y) / 2;
+            gownHeight = Math.abs(hipMidY - midY) * 2.5 * scaleFactor;
+          }
+
+          ctx.save();
+          ctx.translate(midX + xOffset, midY + yOffset); // anchor at shoulders
+          ctx.rotate(baseAngle + rotationAdjust);
+
+          // Gown always starts from shoulders downward
+          ctx.drawImage(gownImage, -gownWidth / 2, 0, gownWidth, gownHeight);
+
+          ctx.restore();
+        }
+      }
+
+      async function renderLoop() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        poses = await detector.estimatePoses(video);
+        if (poses[0]) {
+          const keypoints = poses[0].keypoints;
+          drawSkeleton(keypoints);
+          if (gownImage) drawGown(keypoints);
+        }
+        requestAnimationFrame(renderLoop);
+      }
+
+      // Upload gown
+      uploadBtn.addEventListener("click", () => imageInput.click());
+      imageInput.addEventListener("change", (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          gownImage = new Image();
+          gownImage.src = ev.target.result;
+        };
+        reader.readAsDataURL(file);
+      });
+
+      // Rotate camera button
+      rotateCamBtn.addEventListener("click", async () => {
+        currentFacingMode =
+          currentFacingMode === "user" ? "environment" : "user";
+        await setupCamera();
+      });
+
+      async function main() {
+        await setupCamera();
+        video.play();
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        await loadMoveNet();
+        renderLoop();
+      }
+
+      window.onload = main;
+    </script>
+  </body>
+</html>
