@@ -183,29 +183,29 @@
       }
 
       function drawSkeleton(keypoints) {
-        // const adjacent = poseDetection.util.getAdjacentPairs(
-        //   poseDetection.SupportedModels.MoveNet
-        // );
-        // ctx.strokeStyle = "none";
-        // ctx.lineWidth = 2;
-        // adjacent.forEach(([i, j]) => {
-        //   const a = keypoints[i],
-        //     b = keypoints[j];
-        //   if (a.score > 0.3 && b.score > 0.3) {
-        //     ctx.beginPath();
-        //     ctx.moveTo(a.x, a.y);
-        //     ctx.lineTo(b.x, b.y);
-        //     ctx.stroke();
-        //   }
-        // });
-        // keypoints.forEach((kp) => {
-        //   if (kp.score > 0.3) {
-        //     ctx.fillStyle = "none";
-        //     ctx.beginPath();
-        //     ctx.arc(kp.x, kp.y, 5, 0, 2 * Math.PI);
-        //     ctx.fill();
-        //   }
-        // });
+        const adjacent = poseDetection.util.getAdjacentPairs(
+          poseDetection.SupportedModels.MoveNet
+        );
+        ctx.strokeStyle = "none";
+        ctx.lineWidth = 2;
+        adjacent.forEach(([i, j]) => {
+          const a = keypoints[i],
+            b = keypoints[j];
+          if (a.score > 0.3 && b.score > 0.3) {
+            ctx.beginPath();
+            ctx.moveTo(a.x, a.y);
+            ctx.lineTo(b.x, b.y);
+            ctx.stroke();
+          }
+        });
+        keypoints.forEach((kp) => {
+          if (kp.score > 0.3) {
+            ctx.fillStyle = "none";
+            ctx.beginPath();
+            ctx.arc(kp.x, kp.y, 5, 0, 2 * Math.PI);
+            ctx.fill();
+          }
+        });
       }
 
       function drawGown(keypoints) {
