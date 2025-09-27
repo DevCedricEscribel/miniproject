@@ -3,195 +3,120 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>GPS Speedometer with Horizon</title>
+  <title>GPS Speedometer & Odometer</title>
   <style>
     body {
       font-family: Arial, sans-serif;
       text-align: center;
       background: #111;
-      color: white;
-      margin: 0;
-      padding: 20px;
+      color: #0f0;
     }
-    h1 { margin-bottom: 15px; }
-
-    /* Speedometer */
-    .gauge {
-      position: relative;
-      width: 300px;
-      height: 150px;
-      margin: 20px auto;
-    }
-    svg { width: 100%; height: 100%; }
-    .needle {
-      position: absolute;
-      bottom: 0;
-      left: 50%;
-      width: 4px;
-      height: 140px;
-      background: red;
-      transform-origin: bottom center;
-      transform: rotate(-90deg);
-      transition: transform 0.3s ease-out;
-    }
-
-    .digital {
-      margin-top: 20px;
-      font-size: 1.5em;
-    }
-    .value {
-      font-size: 2.5em;
-      font-weight: bold;
-      color: #00eaff;
-    }
-
-    /* Artificial Horizon */
-    .horizon-container {
-      width: 250px;
-      height: 250px;
-      margin: 30px auto;
-      border: 3px solid #555;
-      border-radius: 50%;
-      overflow: hidden;
-      position: relative;
-      background: black;
-    }
-    .horizon {
-      width: 300%;
-      height: 300%;
-      position: absolute;
-      top: -100%;
-      left: -100%;
-      background: linear-gradient(#4da6ff 50%, #8b5a2b 50%);
-      transform-origin: center;
-      transition: transform 0.1s linear;
-    }
-
-    .info {
-      margin-top: 15px;
-      font-size: 0.9em;
-      color: #aaa;
+    h1 { color: #0ff; }
+    .data-box {
+      margin: 20px;
+      padding: 15px;
+      border: 2px solid #0ff;
+      border-radius: 10px;
+      display: inline-block;
+      min-width: 200px;
     }
     button {
+      margin: 20px;
       padding: 10px 20px;
-      margin-top: 15px;
-      font-size: 1em;
+      font-size: 18px;
+      border-radius: 10px;
       border: none;
-      border-radius: 8px;
-      background: #0077cc;
-      color: white;
+      background: #0ff;
+      color: #111;
       cursor: pointer;
-    }
-    button:hover {
-      background: #005fa3;
     }
   </style>
 </head>
 <body>
-  <h1>🚗 GPS Speedometer + Horizon</h1>
+  <h1>GPS Speedometer & Odometer</h1>
 
-  <!-- Speedometer -->
-  <div class="gauge">
-    <svg viewBox="0 0 200 100">
-      <path d="M10 100 A90 90 0 0 1 190 100"
-            fill="none" stroke="#555" stroke-width="20"/>
-      <path d="M10 100 A90 90 0 0 1 190 100"
-            fill="none" stroke="#00eaff" stroke-width="20"
-            stroke-dasharray="280" stroke-dashoffset="0"/>
-      <text x="20" y="95" fill="#ccc" font-size="12">0</text>
-      <text x="95" y="30" fill="#ccc" font-size="12">100</text>
-      <text x="170" y="95" fill="#ccc" font-size="12">200</text>
-    </svg>
-    <div class="needle" id="needle"></div>
+  <div class="data-box">
+    <h2>Speed</h2>
+    <p id="speed">0 km/h</p>
   </div>
 
-  <!-- Digital Readouts -->
-  <div class="digital">
-    <div class="value" id="speed">--</div>
-    <div>km/h</div>
-    <div id="odometer">Odometer: 0.000 km</div>
+  <div class="data-box">
+    <h2>Odometer</h2>
+    <p id="distance">0.00 km</p>
   </div>
 
-  <!-- Gyroscope Horizon -->
-  <div class="horizon-container">
-    <div class="horizon" id="horizon"></div>
+  <div class="data-box">
+    <h2>Tilt</h2>
+    <p id="tilt">Pitch: 0°<br>Roll: 0°</p>
   </div>
 
-  <div class="info" id="status">Tap "Start Tracking" to begin.</div>
-  <button id="startBtn">Start Tracking</button>
+  <button onclick="enableSensors()">Enable Sensors</button>
 
   <script>
-    let watchId = null;
-    let prevLat = null, prevLon = null, prevTime = null;
-    let odometer = 0;
+    let lastLat = null, lastLon = null;
+    let totalDistance = 0;
 
-    function toRad(deg) { return deg * Math.PI / 180; }
+    // --- GPS SPEED + ODOMETER ---
+    if ("geolocation" in navigator) {
+      navigator.geolocation.watchPosition(
+        (pos) => {
+          const lat = pos.coords.latitude;
+          const lon = pos.coords.longitude;
+          const speed = pos.coords.speed ? pos.coords.speed * 3.6 : 0; // m/s to km/h
+
+          document.getElementById("speed").innerText = speed.toFixed(1) + " km/h";
+
+          if (lastLat !== null && lastLon !== null) {
+            const d = haversine(lastLat, lastLon, lat, lon);
+            totalDistance += d;
+            document.getElementById("distance").innerText = totalDistance.toFixed(2) + " km";
+          }
+
+          lastLat = lat;
+          lastLon = lon;
+        },
+        (err) => console.error("GPS error:", err),
+        { enableHighAccuracy: true, maximumAge: 1000 }
+      );
+    } else {
+      alert("Geolocation not supported.");
+    }
+
+    // --- Haversine formula for distance ---
     function haversine(lat1, lon1, lat2, lon2) {
-      const R = 6371000;
-      const dLat = toRad(lat2 - lat1);
-      const dLon = toRad(lon2 - lon1);
-      const a = Math.sin(dLat/2) ** 2 +
-                Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
-                Math.sin(dLon/2) ** 2;
-      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      const R = 6371; // km
+      const dLat = (lat2 - lat1) * Math.PI/180;
+      const dLon = (lon2 - lon1) * Math.PI/180;
+      const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) *
+                Math.sin(dLon/2) * Math.sin(dLon/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      return R * c;
     }
 
-    function updateGauge(speedKmh, distance, acc) {
-      document.getElementById("speed").textContent = speedKmh.toFixed(1);
-      document.getElementById("odometer").textContent = 
-        "Odometer: " + (distance/1000).toFixed(3) + " km";
-      document.getElementById("status").textContent =
-        `Accuracy: ${acc ? acc + "m" : "unknown"} | ${new Date().toLocaleTimeString()}`;
-
-      const angle = Math.min(200, Math.max(0, speedKmh)) * (180/200) - 90;
-      document.getElementById("needle").style.transform = `rotate(${angle}deg)`;
-    }
-
-    function startTracking() {
-      if (!navigator.geolocation) {
-        document.getElementById("status").textContent = "Geolocation not supported.";
-        return;
-      }
-
-      odometer = 0;
-      prevLat = prevLon = prevTime = null;
-
-      watchId = navigator.geolocation.watchPosition(pos => {
-        const lat = pos.coords.latitude;
-        const lon = pos.coords.longitude;
-        const acc = pos.coords.accuracy;
-        const now = Date.now();
-
-        let speed = pos.coords.speed;
-        if (prevLat !== null && prevLon !== null && prevTime !== null) {
-          const d = haversine(prevLat, prevLon, lat, lon);
-          const dt = (now - prevTime) / 1000;
-          if (d > 0.5) odometer += d;
-          if (speed === null && dt > 0) speed = d / dt;
+    // --- GYROSCOPE / ORIENTATION ---
+    async function enableSensors() {
+      if (typeof DeviceMotionEvent !== "undefined" &&
+          typeof DeviceMotionEvent.requestPermission === "function") {
+        // iOS Safari
+        const response = await DeviceMotionEvent.requestPermission();
+        if (response === "granted") {
+          window.addEventListener("deviceorientation", handleOrientation);
+        } else {
+          alert("Permission denied for motion sensors.");
         }
-
-        if (speed === null) speed = 0;
-        const speedKmh = speed * 3.6;
-        updateGauge(speedKmh, odometer, acc);
-
-        prevLat = lat; prevLon = lon; prevTime = now;
-      }, err => {
-        document.getElementById("status").textContent = "Error: " + err.message;
-      }, { enableHighAccuracy: true, maximumAge: 1000, timeout: 10000 });
+      } else {
+        // Android Chrome
+        window.addEventListener("deviceorientation", handleOrientation);
+      }
     }
 
-    document.getElementById("startBtn").addEventListener("click", startTracking);
-
-    /* Gyroscope Horizon */
-    window.addEventListener("deviceorientation", e => {
-      const roll = e.gamma || 0;   // left/right tilt (-90 to 90)
-      const pitch = e.beta || 0;   // forward/back tilt (-180 to 180)
-      const horizon = document.getElementById("horizon");
-
-      // Roll rotates horizon, Pitch shifts up/down
-      horizon.style.transform = 
-        `rotate(${roll * -1}deg) translateY(${pitch / 2}px)`;
-    });
+    function handleOrientation(event) {
+      const pitch = event.beta;   // front-back
+      const roll = event.gamma;   // left-right
+      document.getElementById("tilt").innerHTML =
+        "Pitch: " + pitch.toFixed(1) + "°<br>Roll: " + roll.toFixed(1) + "°";
+    }
   </script>
 </body>
 </html>
