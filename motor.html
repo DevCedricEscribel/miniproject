@@ -3,25 +3,33 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>GPS Speedometer & Odometer</title>
+  <title>GPS Speedometer with Map</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
   <style>
     body {
       font-family: Arial, sans-serif;
-      text-align: center;
+      margin: 0;
+      padding: 0;
       background: #111;
       color: #0f0;
+      text-align: center;
     }
-    h1 { color: #0ff; }
+    h1 { color: #0ff; margin: 10px; }
     .data-box {
-      margin: 15px;
+      margin: 10px;
       padding: 10px;
       border: 2px solid #0ff;
       border-radius: 10px;
       display: inline-block;
-      min-width: 200px;
+      min-width: 180px;
+    }
+    #map {
+      height: 50vh;
+      width: 100%;
+      margin-top: 10px;
     }
     button {
-      margin: 15px;
+      margin: 10px;
       padding: 10px 20px;
       font-size: 18px;
       border-radius: 10px;
@@ -33,7 +41,7 @@
   </style>
 </head>
 <body>
-  <h1>GPS Speedometer & Stats</h1>
+  <h1>GPS Speedometer & Tracker</h1>
 
   <div class="data-box">
     <h2>Speed</h2>
@@ -62,6 +70,9 @@
 
   <button onclick="enableSensors()">Enable Sensors</button>
 
+  <div id="map"></div>
+
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script>
     let lastLat = null, lastLon = null;
     let totalDistance = 0;
@@ -69,14 +80,23 @@
     let speedSum = 0;
     let speedCount = 0;
     let maxTilt = 0;
+    let map, marker, path;
 
-    // --- GPS SPEED + ODOMETER ---
+    // --- Initialize Map ---
+    map = L.map('map').setView([0, 0], 15);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+    marker = L.marker([0,0]).addTo(map);
+    path = L.polyline([], {color: 'lime'}).addTo(map);
+
+    // --- GPS SPEED + ODOMETER + MAP ---
     if ("geolocation" in navigator) {
       navigator.geolocation.watchPosition(
         (pos) => {
           const lat = pos.coords.latitude;
           const lon = pos.coords.longitude;
-          const speed = pos.coords.speed ? pos.coords.speed * 3.6 : 0; // m/s → km/h
+          const speed = pos.coords.speed ? pos.coords.speed * 3.6 : 0;
 
           // Update speed
           document.getElementById("speed").innerText = speed.toFixed(1) + " km/h";
@@ -84,8 +104,8 @@
           // Track top speed
           if (speed > topSpeed) topSpeed = speed;
 
-          // Track average speed
-          if (speed > 0.5) { // ignore 0 when standing still
+          // Track avg speed
+          if (speed > 0.5) {
             speedSum += speed;
             speedCount++;
           }
@@ -98,6 +118,11 @@
           lastLat = lat;
           lastLon = lon;
 
+          // Update map
+          marker.setLatLng([lat, lon]);
+          map.setView([lat, lon], map.getZoom());
+          path.addLatLng([lat, lon]);
+
           updateStats();
         },
         (err) => console.error("GPS error:", err),
@@ -106,6 +131,58 @@
     } else {
       alert("Geolocation not supported.");
     }
+
+    // --- Haversine (km) ---
+    function haversine(lat1, lon1, lat2, lon2) {
+      const R = 6371;
+      const dLat = (lat2 - lat1) * Math.PI/180;
+      const dLon = (lon2 - lon1) * Math.PI/180;
+      const a = Math.sin(dLat/2)**2 +
+                Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) *
+                Math.sin(dLon/2)**2;
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    }
+
+    // --- GYROSCOPE / ORIENTATION ---
+    async function enableSensors() {
+      if (typeof DeviceMotionEvent !== "undefined" &&
+          typeof DeviceMotionEvent.requestPermission === "function") {
+        const response = await DeviceMotionEvent.requestPermission();
+        if (response === "granted") {
+          window.addEventListener("deviceorientation", handleOrientation);
+        } else {
+          alert("Permission denied for motion sensors.");
+        }
+      } else {
+        window.addEventListener("deviceorientation", handleOrientation);
+      }
+    }
+
+    function handleOrientation(event) {
+      const pitch = event.beta;
+      const roll = event.gamma;
+      document.getElementById("tilt").innerHTML =
+        "Pitch: " + pitch.toFixed(1) + "°<br>Roll: " + roll.toFixed(1) + "°";
+
+      const tiltMag = Math.max(Math.abs(pitch), Math.abs(roll));
+      if (tiltMag > maxTilt) maxTilt = tiltMag;
+
+      updateStats();
+    }
+
+    // --- Update Stats Box ---
+    function updateStats() {
+      const avgSpeed = speedCount > 0 ? (speedSum / speedCount) : 0;
+      document.getElementById("stats").innerHTML =
+        "Top Speed: " + topSpeed.toFixed(1) + " km/h<br>" +
+        "Avg Speed: " + avgSpeed.toFixed(1) + " km/h<br>" +
+        "Max Tilt: " + maxTilt.toFixed(1) + "°<br>" +
+        "Total Distance: " + totalDistance.toFixed(2) + " km";
+      document.getElementById("distance").innerText = totalDistance.toFixed(2) + " km";
+    }
+  </script>
+</body>
+</html>    }
 
     // --- Haversine formula (km) ---
     function haversine(lat1, lon1, lat2, lon2) {
