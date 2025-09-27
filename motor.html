@@ -13,15 +13,15 @@
     }
     h1 { color: #0ff; }
     .data-box {
-      margin: 20px;
-      padding: 15px;
+      margin: 15px;
+      padding: 10px;
       border: 2px solid #0ff;
       border-radius: 10px;
       display: inline-block;
       min-width: 200px;
     }
     button {
-      margin: 20px;
+      margin: 15px;
       padding: 10px 20px;
       font-size: 18px;
       border-radius: 10px;
@@ -33,7 +33,7 @@
   </style>
 </head>
 <body>
-  <h1>GPS Speedometer & Odometer</h1>
+  <h1>GPS Speedometer & Stats</h1>
 
   <div class="data-box">
     <h2>Speed</h2>
@@ -50,11 +50,25 @@
     <p id="tilt">Pitch: 0°<br>Roll: 0°</p>
   </div>
 
+  <div class="data-box">
+    <h2>Stats</h2>
+    <p id="stats">
+      Top Speed: 0 km/h<br>
+      Avg Speed: 0 km/h<br>
+      Max Tilt: 0°<br>
+      Total Distance: 0.00 km
+    </p>
+  </div>
+
   <button onclick="enableSensors()">Enable Sensors</button>
 
   <script>
     let lastLat = null, lastLon = null;
     let totalDistance = 0;
+    let topSpeed = 0;
+    let speedSum = 0;
+    let speedCount = 0;
+    let maxTilt = 0;
 
     // --- GPS SPEED + ODOMETER ---
     if ("geolocation" in navigator) {
@@ -62,18 +76,29 @@
         (pos) => {
           const lat = pos.coords.latitude;
           const lon = pos.coords.longitude;
-          const speed = pos.coords.speed ? pos.coords.speed * 3.6 : 0; // m/s to km/h
+          const speed = pos.coords.speed ? pos.coords.speed * 3.6 : 0; // m/s → km/h
 
+          // Update speed
           document.getElementById("speed").innerText = speed.toFixed(1) + " km/h";
 
+          // Track top speed
+          if (speed > topSpeed) topSpeed = speed;
+
+          // Track average speed
+          if (speed > 0.5) { // ignore 0 when standing still
+            speedSum += speed;
+            speedCount++;
+          }
+
+          // Distance traveled
           if (lastLat !== null && lastLon !== null) {
             const d = haversine(lastLat, lastLon, lat, lon);
             totalDistance += d;
-            document.getElementById("distance").innerText = totalDistance.toFixed(2) + " km";
           }
-
           lastLat = lat;
           lastLon = lon;
+
+          updateStats();
         },
         (err) => console.error("GPS error:", err),
         { enableHighAccuracy: true, maximumAge: 1000 }
@@ -82,23 +107,21 @@
       alert("Geolocation not supported.");
     }
 
-    // --- Haversine formula for distance ---
+    // --- Haversine formula (km) ---
     function haversine(lat1, lon1, lat2, lon2) {
-      const R = 6371; // km
+      const R = 6371;
       const dLat = (lat2 - lat1) * Math.PI/180;
       const dLon = (lon2 - lon1) * Math.PI/180;
-      const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+      const a = Math.sin(dLat/2)**2 +
                 Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) *
-                Math.sin(dLon/2) * Math.sin(dLon/2);
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-      return R * c;
+                Math.sin(dLon/2)**2;
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
     }
 
     // --- GYROSCOPE / ORIENTATION ---
     async function enableSensors() {
       if (typeof DeviceMotionEvent !== "undefined" &&
           typeof DeviceMotionEvent.requestPermission === "function") {
-        // iOS Safari
         const response = await DeviceMotionEvent.requestPermission();
         if (response === "granted") {
           window.addEventListener("deviceorientation", handleOrientation);
@@ -106,7 +129,6 @@
           alert("Permission denied for motion sensors.");
         }
       } else {
-        // Android Chrome
         window.addEventListener("deviceorientation", handleOrientation);
       }
     }
@@ -116,6 +138,23 @@
       const roll = event.gamma;   // left-right
       document.getElementById("tilt").innerHTML =
         "Pitch: " + pitch.toFixed(1) + "°<br>Roll: " + roll.toFixed(1) + "°";
+
+      // Track max tilt
+      const tiltMag = Math.max(Math.abs(pitch), Math.abs(roll));
+      if (tiltMag > maxTilt) maxTilt = tiltMag;
+
+      updateStats();
+    }
+
+    // --- Update stats box ---
+    function updateStats() {
+      const avgSpeed = speedCount > 0 ? (speedSum / speedCount) : 0;
+      document.getElementById("stats").innerHTML =
+        "Top Speed: " + topSpeed.toFixed(1) + " km/h<br>" +
+        "Avg Speed: " + avgSpeed.toFixed(1) + " km/h<br>" +
+        "Max Tilt: " + maxTilt.toFixed(1) + "°<br>" +
+        "Total Distance: " + totalDistance.toFixed(2) + " km";
+      document.getElementById("distance").innerText = totalDistance.toFixed(2) + " km";
     }
   </script>
 </body>
