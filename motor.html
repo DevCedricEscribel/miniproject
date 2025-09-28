@@ -38,6 +38,19 @@
       color: #111;
       cursor: pointer;
     }
+    .paused { color: red; }
+    .gps-bars {
+      display: inline-block;
+      margin-top: 5px;
+    }
+    .bar {
+      display: inline-block;
+      width: 6px;
+      margin: 0 1px;
+      background: #333;
+      border-radius: 2px;
+    }
+    .bar.active { background: lime; }
   </style>
 </head>
 <body>
@@ -56,6 +69,7 @@
   <div class="data-box">
     <h2>Tilt</h2>
     <p id="tilt">Pitch: 0°<br>Roll: 0°</p>
+    <button onclick="calibrateGyro()">Calibrate</button>
   </div>
 
   <div class="data-box">
@@ -64,8 +78,15 @@
       Top Speed: 0 km/h<br>
       Avg Speed: 0 km/h<br>
       Max Tilt: 0°<br>
-      Total Distance: 0.00 km
+      Total Distance: 0.00 km<br>
+      Ride Time: 00:00:00 <span id="pauseStatus" class="paused">(Paused)</span>
     </p>
+  </div>
+
+  <div class="data-box">
+    <h2>GPS</h2>
+    <p id="gps">Accuracy: -- m</p>
+    <div id="gpsBars" class="gps-bars"></div>
   </div>
 
   <button onclick="enableSensors()">Enable Sensors</button>
@@ -80,7 +101,14 @@
     let speedSum = 0;
     let speedCount = 0;
     let maxTilt = 0;
+
     let map, marker, path;
+    let rideTime = 0;   // seconds
+    let timerInterval = null;
+    let isPaused = true;
+
+    // Gyro calibration offsets
+    let pitchOffset = 0, rollOffset = 0;
 
     // --- Initialize Map ---
     map = L.map('map').setView([0, 0], 15);
@@ -90,16 +118,28 @@
     marker = L.marker([0,0]).addTo(map);
     path = L.polyline([], {color: 'lime'}).addTo(map);
 
-    // --- GPS SPEED + ODOMETER + MAP ---
+    // --- GPS ---
     if ("geolocation" in navigator) {
       navigator.geolocation.watchPosition(
         (pos) => {
           const lat = pos.coords.latitude;
           const lon = pos.coords.longitude;
           const speed = pos.coords.speed ? pos.coords.speed * 3.6 : 0;
+          const accuracy = pos.coords.accuracy;
+
+          // GPS accuracy
+          document.getElementById("gps").innerText = "Accuracy: " + accuracy.toFixed(1) + " m";
+          updateGpsBars(accuracy);
 
           // Update speed
           document.getElementById("speed").innerText = speed.toFixed(1) + " km/h";
+
+          // Auto pause/resume
+          if (speed > 1) {
+            if (isPaused) resumeRide();
+          } else {
+            if (!isPaused) pauseRide();
+          }
 
           // Track top speed
           if (speed > topSpeed) topSpeed = speed;
@@ -159,8 +199,9 @@
     }
 
     function handleOrientation(event) {
-      const pitch = event.beta;
-      const roll = event.gamma;
+      let pitch = event.beta - pitchOffset;
+      let roll = event.gamma - rollOffset;
+
       document.getElementById("tilt").innerHTML =
         "Pitch: " + pitch.toFixed(1) + "°<br>Roll: " + roll.toFixed(1) + "°";
 
@@ -168,69 +209,73 @@
       if (tiltMag > maxTilt) maxTilt = tiltMag;
 
       updateStats();
+    }
+
+    function calibrateGyro() {
+      window.addEventListener("deviceorientation", function setOffsets(e) {
+        pitchOffset = e.beta;
+        rollOffset = e.gamma;
+        window.removeEventListener("deviceorientation", setOffsets);
+        alert("Gyroscope calibrated!");
+      });
+    }
+
+    // --- Ride timer ---
+    function startTimer() {
+      if (!timerInterval) {
+        timerInterval = setInterval(() => {
+          if (!isPaused) {
+            rideTime++;
+            updateStats();
+          }
+        }, 1000);
+      }
+    }
+
+    function pauseRide() {
+      isPaused = true;
+      document.getElementById("pauseStatus").innerText = "(Paused)";
+    }
+
+    function resumeRide() {
+      isPaused = false;
+      document.getElementById("pauseStatus").innerText = "";
+      startTimer();
+    }
+
+    // --- GPS Signal Bars ---
+    function updateGpsBars(accuracy) {
+      const bars = document.getElementById("gpsBars");
+      bars.innerHTML = "";
+
+      let level = 0;
+      if (accuracy > 50) level = 1;   // very poor
+      else if (accuracy > 20) level = 2; // poor
+      else if (accuracy > 10) level = 3; // fair
+      else if (accuracy > 5) level = 4;  // good
+      else level = 5;                    // excellent
+
+      for (let i = 1; i <= 5; i++) {
+        const bar = document.createElement("div");
+        bar.className = "bar";
+        bar.style.height = (i * 6 + 4) + "px"; // taller bars to the right
+        if (i <= level) bar.classList.add("active");
+        bars.appendChild(bar);
+      }
     }
 
     // --- Update Stats Box ---
     function updateStats() {
       const avgSpeed = speedCount > 0 ? (speedSum / speedCount) : 0;
+      const timeStr = new Date(rideTime * 1000).toISOString().substr(11, 8);
+
       document.getElementById("stats").innerHTML =
         "Top Speed: " + topSpeed.toFixed(1) + " km/h<br>" +
         "Avg Speed: " + avgSpeed.toFixed(1) + " km/h<br>" +
         "Max Tilt: " + maxTilt.toFixed(1) + "°<br>" +
-        "Total Distance: " + totalDistance.toFixed(2) + " km";
-      document.getElementById("distance").innerText = totalDistance.toFixed(2) + " km";
-    }
-  </script>
-</body>
-</html>    }
+        "Total Distance: " + totalDistance.toFixed(2) + " km<br>" +
+        "Ride Time: " + timeStr + " <span id='pauseStatus' class='paused'>" + (isPaused ? "(Paused)" : "") + "</span>";
 
-    // --- Haversine formula (km) ---
-    function haversine(lat1, lon1, lat2, lon2) {
-      const R = 6371;
-      const dLat = (lat2 - lat1) * Math.PI/180;
-      const dLon = (lon2 - lon1) * Math.PI/180;
-      const a = Math.sin(dLat/2)**2 +
-                Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) *
-                Math.sin(dLon/2)**2;
-      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    }
-
-    // --- GYROSCOPE / ORIENTATION ---
-    async function enableSensors() {
-      if (typeof DeviceMotionEvent !== "undefined" &&
-          typeof DeviceMotionEvent.requestPermission === "function") {
-        const response = await DeviceMotionEvent.requestPermission();
-        if (response === "granted") {
-          window.addEventListener("deviceorientation", handleOrientation);
-        } else {
-          alert("Permission denied for motion sensors.");
-        }
-      } else {
-        window.addEventListener("deviceorientation", handleOrientation);
-      }
-    }
-
-    function handleOrientation(event) {
-      const pitch = event.beta;   // front-back
-      const roll = event.gamma;   // left-right
-      document.getElementById("tilt").innerHTML =
-        "Pitch: " + pitch.toFixed(1) + "°<br>Roll: " + roll.toFixed(1) + "°";
-
-      // Track max tilt
-      const tiltMag = Math.max(Math.abs(pitch), Math.abs(roll));
-      if (tiltMag > maxTilt) maxTilt = tiltMag;
-
-      updateStats();
-    }
-
-    // --- Update stats box ---
-    function updateStats() {
-      const avgSpeed = speedCount > 0 ? (speedSum / speedCount) : 0;
-      document.getElementById("stats").innerHTML =
-        "Top Speed: " + topSpeed.toFixed(1) + " km/h<br>" +
-        "Avg Speed: " + avgSpeed.toFixed(1) + " km/h<br>" +
-        "Max Tilt: " + maxTilt.toFixed(1) + "°<br>" +
-        "Total Distance: " + totalDistance.toFixed(2) + " km";
       document.getElementById("distance").innerText = totalDistance.toFixed(2) + " km";
     }
   </script>
