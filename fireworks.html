@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>New Year Countdown</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+body {
+  margin: 0;
+  font-family: Arial, Helvetica, sans-serif;
+  background: radial-gradient(circle at bottom, #020111, #000);
+  color: #fff;
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+canvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1;
+}
+
+.container {
+  text-align: center;
+  z-index: 2;
+}
+
+h1 {
+  font-size: 2.5rem;
+  margin-bottom: 20px;
+  letter-spacing: 2px;
+}
+
+.timer {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+}
+
+.time-box {
+  background: rgba(255,255,255,0.1);
+  padding: 15px 20px;
+  border-radius: 12px;
+  min-width: 90px;
+}
+
+.number {
+  font-size: 2.2rem;
+  font-weight: bold;
+  display: block;
+}
+
+button {
+  margin-top: 25px;
+  padding: 12px 30px;
+  border-radius: 30px;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: bold;
+  background: linear-gradient(135deg, #ff9800, #ff1744);
+  color: #fff;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+button:hover {
+  transform: scale(1.05);
+  box-shadow: 0 10px 25px rgba(255,23,68,0.6);
+}
+
+.newyear {
+  font-size: 3rem;
+  font-weight: bold;
+  color: #ffd700;
+  margin-top: 25px;
+  display: none;
+}
+</style>
+</head>
+
+<body>
+
+<canvas id="fireworks"></canvas>
+
+<div class="container">
+  <h1>Countdown to New Year</h1>
+
+  <div class="timer" id="countdown">
+    <div class="time-box"><span class="number" id="days">0</span>Days</div>
+    <div class="time-box"><span class="number" id="hours">0</span>Hours</div>
+    <div class="time-box"><span class="number" id="minutes">0</span>Minutes</div>
+    <div class="time-box"><span class="number" id="seconds">0</span>Seconds</div>
+  </div>
+
+  <button onclick="sampleFireworks()">🎆 Sample Fireworks</button>
+
+  <div class="newyear" id="newYearText">🎉 Happy New Year! 🎉</div>
+</div>
+
+<script>
+/* ===============================
+   COUNTDOWN
+================================ */
+const targetYear = new Date().getFullYear() + 1;
+const newYearDate = new Date(`January 1, ${targetYear} 00:00:00`);
+
+const d = document.getElementById("days");
+const h = document.getElementById("hours");
+const m = document.getElementById("minutes");
+const s = document.getElementById("seconds");
+const textNY = document.getElementById("newYearText");
+const countdown = document.getElementById("countdown");
+
+const timer = setInterval(() => {
+  const now = new Date().getTime();
+  const diff = newYearDate - now;
+
+  if (diff <= 0) {
+    clearInterval(timer);
+    countdown.style.display = "none";
+    textNY.style.display = "block";
+    startFireworks();
+    return;
+  }
+
+  d.textContent = Math.floor(diff / (1000 * 60 * 60 * 24));
+  h.textContent = Math.floor((diff / (1000 * 60 * 60)) % 24);
+  m.textContent = Math.floor((diff / (1000 * 60)) % 60);
+  s.textContent = Math.floor((diff / 1000) % 60);
+}, 1000);
+
+/* ===============================
+   FIREWORKS ENGINE (INTENSE)
+================================ */
+const canvas = document.getElementById("fireworks");
+const ctx = canvas.getContext("2d");
+
+canvas.width = innerWidth;
+canvas.height = innerHeight;
+
+window.onresize = () => {
+  canvas.width = innerWidth;
+  canvas.height = innerHeight;
+};
+
+let fireworksRunning = false;
+const particles = [];
+
+function rand(min, max) {
+  return Math.random() * (max - min) + min;
+}
+
+function launchFirework(x = rand(100, canvas.width - 100),
+                        y = rand(80, canvas.height / 2)) {
+
+  const colors = ["#ff0043","#14fc56","#1e90ff","#ffd700","#ff00ff","#ff7f00"];
+  const count = 70; // 🔥 VERY DENSE
+
+  for (let i = 0; i < count; i++) {
+    particles.push({
+      x,
+      y,
+      r: rand(1.5, 3.5),
+      c: colors[Math.floor(Math.random() * colors.length)],
+      a: rand(0, Math.PI * 2),
+      sp: rand(3, 9),
+      g: rand(0.02, 0.05),
+      al: 1
+    });
+  }
+
+  // Secondary burst
+  setTimeout(() => {
+    for (let i = 0; i < count / 2; i++) {
+      particles.push({
+        x,
+        y,
+        r: rand(1, 2.5),
+        c: colors[Math.floor(Math.random() * colors.length)],
+        a: rand(0, Math.PI * 2),
+        sp: rand(2, 7),
+        g: rand(0.03, 0.06),
+        al: 1
+      });
+    }
+  }, 200);
+}
+
+function animate() {
+  if (!fireworksRunning) return;
+
+  ctx.fillStyle = "rgba(0,0,0,0.15)";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+
+    p.x += Math.cos(p.a) * p.sp;
+    p.y += Math.sin(p.a) * p.sp + p.g;
+    p.al -= 0.012;
+
+    if (p.al <= 0) {
+      particles.splice(i, 1);
+      continue;
+    }
+
+    ctx.globalAlpha = p.al;
+    ctx.shadowBlur = 15;
+    ctx.shadowColor = p.c;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+    ctx.fillStyle = p.c;
+    ctx.fill();
+  }
+
+  ctx.globalAlpha = 1;
+  ctx.shadowBlur = 0;
+  requestAnimationFrame(animate);
+}
+
+function startFireworks() {
+  if (fireworksRunning) return;
+  fireworksRunning = true;
+
+  setInterval(() => {
+    launchFirework();
+    if (Math.random() > 0.5) launchFirework();
+  }, 300);
+
+  animate();
+}
+
+function sampleFireworks() {
+  startFireworks();
+  setTimeout(() => {
+    fireworksRunning = false;
+    particles.length = 0;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }, 9000);
+}
+</script>
+
+</body>
+</html>
