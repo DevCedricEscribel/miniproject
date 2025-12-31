@@ -1,14 +1,13 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <title>New Year Countdown</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 
 <style>
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
 body {
   margin: 0;
@@ -103,6 +102,49 @@ button {
 
 <script>
 /* ===============================
+   FULLSCREEN + ROTATION
+================================ */
+function enterFullscreen() {
+  const el = document.documentElement;
+  if (el.requestFullscreen) el.requestFullscreen();
+  else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+}
+
+async function lockLandscape() {
+  try {
+    if (screen.orientation?.lock) {
+      await screen.orientation.lock("landscape");
+    }
+  } catch {}
+}
+
+/* First user interaction triggers fullscreen */
+document.addEventListener("click", () => {
+  enterFullscreen();
+  lockLandscape();
+  requestWakeLock();
+}, { once: true });
+
+/* ===============================
+   WAKE LOCK (KEEP SCREEN ON)
+================================ */
+let wakeLock = null;
+
+async function requestWakeLock() {
+  try {
+    if ("wakeLock" in navigator) {
+      wakeLock = await navigator.wakeLock.request("screen");
+    }
+  } catch {}
+}
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") {
+    requestWakeLock();
+  }
+});
+
+/* ===============================
    COUNTDOWN
 ================================ */
 const targetYear = new Date().getFullYear() + 1;
@@ -117,8 +159,7 @@ const countdown = document.getElementById("countdown");
 const sampleBtn = document.getElementById("sampleBtn");
 
 const timer = setInterval(() => {
-  const now = Date.now();
-  const diff = newYearDate - now;
+  const diff = newYearDate - Date.now();
 
   if (diff <= 0) {
     clearInterval(timer);
@@ -136,7 +177,7 @@ const timer = setInterval(() => {
 }, 1000);
 
 /* ===============================
-   FIREWORKS (SMALLER + MOBILE SAFE)
+   FIREWORKS (SMALL + MOBILE SAFE)
 ================================ */
 const canvas = document.getElementById("fireworks");
 const ctx = canvas.getContext("2d");
@@ -157,19 +198,18 @@ function rand(min, max) {
   return Math.random() * (max - min) + min;
 }
 
-function launch(x = rand(60, innerWidth - 60),
-                y = rand(80, innerHeight / 2)) {
-
+function launch() {
+  const x = rand(60, innerWidth - 60);
+  const y = rand(80, innerHeight / 2);
   const colors = ["#ff0043","#14fc56","#1e90ff","#ffd700","#ff7f00"];
-  const count = 60; // 🔽 fewer particles
 
-  for (let i = 0; i < count; i++) {
+  for (let i = 0; i < 60; i++) {
     particles.push({
       x, y,
-      r: rand(0.8, 1.8),       // 🔽 smaller size
+      r: rand(0.8, 1.8),
       c: colors[Math.floor(Math.random() * colors.length)],
       a: rand(0, Math.PI * 2),
-      sp: rand(2, 4.5),       // 🔽 slower spread
+      sp: rand(2, 4.5),
       g: rand(0.015, 0.03),
       al: 1
     });
@@ -195,9 +235,8 @@ function animate() {
     }
 
     ctx.globalAlpha = p.al;
-    ctx.shadowBlur = 6;       // 🔽 softer glow
+    ctx.shadowBlur = 6;
     ctx.shadowColor = p.c;
-
     ctx.beginPath();
     ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
     ctx.fillStyle = p.c;
@@ -212,6 +251,7 @@ function animate() {
 function startFireworks() {
   if (running) return;
   running = true;
+  requestWakeLock();
 
   setInterval(() => {
     launch();
@@ -222,7 +262,7 @@ function startFireworks() {
 }
 
 function sampleFireworks() {
-  sampleBtn.style.display = "none"; // 🚫 hide button
+  sampleBtn.style.display = "none";
   startFireworks();
 
   setTimeout(() => {
