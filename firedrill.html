@@ -1,180 +1,126 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Fire Drill Alert</title>
-
-  <link
-    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
-    rel="stylesheet"
-  />
-
-  <style>
-    body {
-      background-color: #f1f3f5;
-    }
-
-    .card {
-      border-radius: 18px;
-      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-    }
-
-    .alert-emergency {
-      background: linear-gradient(135deg, #dc3545, #a71d2a);
-      color: #fff;
-      font-weight: 600;
-      animation: pulse 1.2s infinite;
-    }
-
-    @keyframes pulse {
-      0% { transform: scale(1); }
-      50% { transform: scale(1.03); }
-      100% { transform: scale(1); }
-    }
-
-    .notification-box {
-      border-left: 6px solid #dc3545;
-      background-color: #fff;
-      padding: 12px 16px;
-      border-radius: 8px;
-      margin-bottom: 16px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-    }
-
-    .icon-large {
-      font-size: 3rem;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fire Drill Alarm PWA</title>
+<link rel="manifest" href="manifest.json">
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="firebase-config.js"></script>
+<style>
+body { font-family: Arial; text-align:center; background:#111; color:#fff; padding:20px; }
+button { padding:15px 25px; font-size:18px; margin:10px; border:none; border-radius:8px; cursor:pointer; }
+.admin { background:#c62828; color:#fff; }
+.stop { background:#2e7d32; }
+.install { background:#1976d2; color:#fff; }
+.status { margin-top:20px; font-size:20px; }
+.info { margin-top:10px; font-size:14px; color:#ccc; }
+</style>
 </head>
 <body>
 
-<div class="container vh-100 d-flex align-items-center justify-content-center">
-  <div class="card p-4 text-center w-100" style="max-width: 420px;">
-
-    <div class="icon-large mb-2">🚨</div>
-    <h3 class="mb-2">Fire Drill Alert</h3>
-    <p class="text-muted mb-3">
-      This system will vibrate, notify, and flash your phone during a fire drill.
-    </p>
-
-    <div id="notification" class="notification-box">
-      <strong>Status:</strong> No active fire alert
-    </div>
-
-    <div id="status" class="alert alert-secondary mb-3">
-      System Idle
-    </div>
-
-    <button class="btn btn-danger btn-lg w-100 mb-2" onclick="startFireAlert()">
-      🔥 Sample Fire Drill
-    </button>
-
-    <button class="btn btn-outline-dark w-100" onclick="stopFireAlert()">
-      🛑 Stop Alert
-    </button>
-
-  </div>
+<h1>🔥 Fire Drill Alarm</h1>
+<button class="admin" onclick="triggerAlarm()">ADMIN: TRIGGER FIRE ALARM</button>
+<button class="stop" onclick="stopAlarm()">STOP ALARM</button>
+<button class="install" id="installBtn" style="display:none;">Install App</button>
+<div class="status" id="status">Status: Idle</div>
+<div class="info" id="iosInfo" style="display:none;">
+  iOS users: Tap the Share icon → Add to Home Screen
 </div>
 
+<script>
+let torchTrack = null;
+let alarmInterval = null;
+let deferredPrompt;
 
-     <script>
-  let vibrationTimer = null;
-  let flashStream = null;
-  let flashTrack = null;
-  let flashlightTimer = null;
-  let torchOn = false;
-
-  async function initFlashlight() {
-    try {
-      flashStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment" }
-      });
-
-      flashTrack = flashStream.getVideoTracks()[0];
-      const capabilities = flashTrack.getCapabilities();
-
-      if (!capabilities.torch) {
-        console.warn("Torch not supported on this device.");
-        return;
-      }
-
-      // Toggle flashlight ON/OFF repeatedly
-      flashlightTimer = setInterval(() => {
-        torchOn = !torchOn;
-        flashTrack.applyConstraints({
-          advanced: [{ torch: torchOn }]
-        });
-      }, 700); // blinking speed (ms)
-
-    } catch (err) {
-      console.warn("Flashlight error:", err);
-    }
+// FIREBASE REAL-TIME LISTENER
+db.ref('fireAlarm/active').on('value', async (snapshot) => {
+  const active = snapshot.val();
+  const status = document.getElementById('status');
+  if (active) {
+    status.innerText = "🚨 FIRE ALARM ACTIVE!";
+    startVibration();
+    await turnOnFlashlight();
+  } else {
+    status.innerText = "✅ Alarm Stopped";
+    stopVibration();
+    turnOffFlashlight();
   }
+});
 
-  function stopFlashlight() {
-    if (flashlightTimer) {
-      clearInterval(flashlightTimer);
-      flashlightTimer = null;
-    }
+// ADMIN FUNCTIONS
+function triggerAlarm() {
+  db.ref('fireAlarm').set({
+    active: true,
+    timestamp: Date.now()
+  });
+}
+function stopAlarm() {
+  db.ref('fireAlarm').set({
+    active: false,
+    timestamp: Date.now()
+  });
+}
 
-    if (flashTrack) {
-      flashTrack.applyConstraints({
-        advanced: [{ torch: false }]
-      });
-      flashTrack.stop();
-      flashTrack = null;
-    }
-
-    flashStream = null;
-    torchOn = false;
+// VIBRATION
+function startVibration() {
+  if (navigator.vibrate) {
+    alarmInterval = setInterval(() => navigator.vibrate([500, 300, 500]), 1300);
   }
+}
+function stopVibration() {
+  clearInterval(alarmInterval);
+  navigator.vibrate(0);
+}
 
-  function startFireAlert() {
-    const status = document.getElementById("status");
-    const notification = document.getElementById("notification");
-
-    status.className = "alert alert-danger";
-    status.innerHTML = "🚨 FIRE DETECTED! EVACUATE IMMEDIATELY!";
-
-    notification.innerHTML = `
-      <strong>🚨 Emergency Alert</strong><br>
-      Fire reported. Please evacuate immediately.
-    `;
-
-    // Vibration loop
-    if ("vibrate" in navigator) {
-      const vibrationPattern = [1200, 400, 1200, 400, 1200];
-      navigator.vibrate(vibrationPattern);
-
-      vibrationTimer = setInterval(() => {
-        navigator.vibrate(vibrationPattern);
-      }, 5000);
+// FLASHLIGHT
+async function turnOnFlashlight() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+    const track = stream.getVideoTracks()[0];
+    torchTrack = track;
+    const capabilities = track.getCapabilities();
+    if (capabilities.torch) {
+      await track.applyConstraints({ advanced: [{ torch: true }] });
     }
-
-    // Start blinking flashlight
-    initFlashlight();
+  } catch (err) {
+    console.log("Flashlight error:", err);
   }
-
-  function stopFireAlert() {
-    const status = document.getElementById("status");
-    const notification = document.getElementById("notification");
-
-    status.className = "alert alert-secondary";
-    status.innerHTML = "System Idle";
-
-    notification.innerHTML =
-      "<strong>Status:</strong> No active fire alert";
-
-    if ("vibrate" in navigator) {
-      navigator.vibrate(0);
-    }
-
-    clearInterval(vibrationTimer);
-    vibrationTimer = null;
-
-    stopFlashlight();
+}
+function turnOffFlashlight() {
+  if (torchTrack) {
+    torchTrack.stop();
+    torchTrack = null;
   }
+}
+
+/* INSTALL BUTTON LOGIC */
+
+// Android & Desktop (Chrome, Edge, etc.)
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  const installBtn = document.getElementById('installBtn');
+  installBtn.style.display = 'inline-block';
+  installBtn.onclick = async () => {
+    installBtn.style.display = 'none';
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    console.log('User choice:', outcome);
+    deferredPrompt = null;
+  };
+});
+
+// iOS Detection & Guide
+const isIos = () => {
+  return /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase());
+};
+const isInStandaloneMode = () => ('standalone' in window.navigator && window.navigator.standalone);
+
+if (isIos() && !isInStandaloneMode()) {
+  document.getElementById('iosInfo').style.display = 'block';
+}
 </script>
 
 </body>
