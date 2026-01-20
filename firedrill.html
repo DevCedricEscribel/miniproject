@@ -77,51 +77,72 @@
   </div>
 </div>
 
-<script>
+
+     <script>
   let vibrationTimer = null;
   let flashStream = null;
   let flashTrack = null;
+  let flashlightTimer = null;
+  let torchOn = false;
 
-  async function startFlashlight() {
+  async function initFlashlight() {
     try {
       flashStream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: "environment" }
       });
 
       flashTrack = flashStream.getVideoTracks()[0];
-      const imageCapture = new ImageCapture(flashTrack);
-      const capabilities = await flashTrack.getCapabilities();
+      const capabilities = flashTrack.getCapabilities();
 
-      if (capabilities.torch) {
-        flashTrack.applyConstraints({ advanced: [{ torch: true }] });
+      if (!capabilities.torch) {
+        console.warn("Torch not supported on this device.");
+        return;
       }
+
+      // Toggle flashlight ON/OFF repeatedly
+      flashlightTimer = setInterval(() => {
+        torchOn = !torchOn;
+        flashTrack.applyConstraints({
+          advanced: [{ torch: torchOn }]
+        });
+      }, 700); // blinking speed (ms)
+
     } catch (err) {
-      console.warn("Flashlight not supported:", err);
+      console.warn("Flashlight error:", err);
     }
   }
 
   function stopFlashlight() {
+    if (flashlightTimer) {
+      clearInterval(flashlightTimer);
+      flashlightTimer = null;
+    }
+
     if (flashTrack) {
+      flashTrack.applyConstraints({
+        advanced: [{ torch: false }]
+      });
       flashTrack.stop();
       flashTrack = null;
     }
-    if (flashStream) {
-      flashStream = null;
-    }
+
+    flashStream = null;
+    torchOn = false;
   }
 
   function startFireAlert() {
     const status = document.getElementById("status");
     const notification = document.getElementById("notification");
 
-    status.className = "alert alert-emergency";
+    status.className = "alert alert-danger";
     status.innerHTML = "🚨 FIRE DETECTED! EVACUATE IMMEDIATELY!";
 
     notification.innerHTML = `
       <strong>🚨 Emergency Alert</strong><br>
-      Fire reported. Please proceed to the nearest exit immediately.
+      Fire reported. Please evacuate immediately.
     `;
 
+    // Vibration loop
     if ("vibrate" in navigator) {
       const vibrationPattern = [1200, 400, 1200, 400, 1200];
       navigator.vibrate(vibrationPattern);
@@ -131,7 +152,8 @@
       }, 5000);
     }
 
-    startFlashlight();
+    // Start blinking flashlight
+    initFlashlight();
   }
 
   function stopFireAlert() {
@@ -141,7 +163,8 @@
     status.className = "alert alert-secondary";
     status.innerHTML = "System Idle";
 
-    notification.innerHTML = "<strong>Status:</strong> No active fire alert";
+    notification.innerHTML =
+      "<strong>Status:</strong> No active fire alert";
 
     if ("vibrate" in navigator) {
       navigator.vibrate(0);
