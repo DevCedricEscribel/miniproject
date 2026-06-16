@@ -30,7 +30,96 @@ try {
   echo "Error: " . $e->getMessage();
 }
 
+$stmt = $pdo->query("SELECT `Wash`, `Dry`, `Fold` FROM config WHERE id = 1");
+$prices = $stmt->fetch(PDO::FETCH_ASSOC);
 
+$washPrice = $prices['Wash'];
+$dryPrice  = $prices['Dry'];
+$foldPrice = $prices['Fold'];
+
+if (isset($_POST['submit_order'])) {
+
+  $customer_name = $_POST['customer_name'];
+  $phone = $_POST['phone'];
+  $weight = floatval($_POST['weight']);
+
+  $wash = isset($_POST['wash']) ? 1 : 0;
+  $dry  = isset($_POST['dry']) ? 1 : 0;
+  $fold = isset($_POST['fold']) ? 1 : 0;
+
+  // Generate tracking number
+  $tracking_no = 'LDY-' . date('YmdHis');
+
+  // Get prices
+  $stmt = $pdo->query("SELECT `Wash`, `Dry`, `Fold` FROM config WHERE id = 1");
+  $prices = $stmt->fetch(PDO::FETCH_ASSOC);
+
+  $total = 0;
+
+  if ($wash) {
+    $total += $prices['Wash'] * $weight;
+  }
+
+  if ($dry) {
+    $total += $prices['Dry'] * $weight;
+  }
+
+  if ($fold) {
+    $total += $prices['Fold'] * $weight;
+  }
+
+  $payment_status = 'Unpaid';
+  $laundry_status = 'Pending';
+
+  $sql = "INSERT INTO laundry_orders
+            (
+                tracking_no,
+                customer_name,
+                phone,
+                wash,
+                dry,
+                fold,
+                weight,
+                payment_status,
+                laundry_status,
+                total_price
+            )
+            VALUES
+            (
+                :tracking_no,
+                :customer_name,
+                :phone,
+                :wash,
+                :dry,
+                :fold,
+                :weight,
+                :payment_status,
+                :laundry_status,
+                :total_price
+            )";
+
+  $stmt = $pdo->prepare($sql);
+
+  $stmt->execute([
+    ':tracking_no' => $tracking_no,
+    ':customer_name' => $customer_name,
+    ':phone' => $phone,
+    ':wash' => $wash,
+    ':dry' => $dry,
+    ':fold' => $fold,
+    ':weight' => $weight,
+    ':payment_status' => $payment_status,
+    ':laundry_status' => $laundry_status,
+    ':total_price' => $total
+  ]);
+
+  echo "
+        <div class='alert alert-success'>
+            Order submitted successfully!<br>
+            Tracking No: <strong>{$tracking_no}</strong>
+        </div>
+    ";
+}
 ?>
 
 <!doctype html>
@@ -145,164 +234,13 @@ try {
   </section>
 
   <!-- Services -->
-  <section class="container py-5" id="services">
-    <h2 class="text-center mb-5 fw-bold">Our Services</h2>
-
-    <div class="row g-4">
-      <div class="col-md-4">
-        <div class="card service-card shadow p-4 text-center">
-          <i class="bi bi-droplet-fill text-primary display-3"></i>
-
-          <h3 class="mt-3">Wash</h3>
-
-          <?php
-          echo '<h4 class="text-primary">' . $washPrice . '</h4>';
-          ?>
-
-          <p>Professional washing service for your clothes.</p>
-        </div>
-      </div>
-
-      <div class="col-md-4">
-        <div class="card service-card shadow p-4 text-center">
-          <i class="bi bi-sun-fill text-warning display-3"></i>
-
-          <h3 class="mt-3">Dry</h3>
-
-          <?php
-          echo '<h4 class="text-primary">' . $dryPrice . '</h4>';
-          ?>
-
-          <p>Fast and hygienic drying process.</p>
-        </div>
-      </div>
-
-      <div class="col-md-4">
-        <div class="card service-card shadow p-4 text-center">
-          <i class="bi bi-box-seam-fill text-success display-3"></i>
-
-          <h3 class="mt-3">Fold</h3>
-
-          <?php
-          echo '<h4 class="text-primary">' . $foldPrice . '</h4>';
-          ?>
-
-          <p>Neatly folded and organized clothes.</p>
-        </div>
-      </div>
-    </div>
-  </section>
+  <?php include 'services.php'; ?>
 
   <!-- Track Order -->
-  <section class="container py-4" id="track">
-    <div class="card shadow tracking-box">
-      <div class="card-body p-5">
-        <h2 class="mb-4">
-          <i class="bi bi-search"></i>
-          Track Laundry Order
-        </h2>
-
-        <div class="row">
-          <div class="col-md-9">
-            <input
-              type="text"
-              class="form-control form-control-lg"
-              placeholder="Enter Tracking Number" />
-          </div>
-
-          <div class="col-md-3">
-            <button class="btn btn-primary w-100 btn-lg">Search</button>
-          </div>
-        </div>
-
-        <hr />
-
-        <div class="row mt-4">
-          <div class="col-md-6">
-            <p><strong>Customer:</strong> Juan Dela Cruz</p>
-            <p><strong>Tracking #:</strong> LDY-1001</p>
-            <p><strong>Total:</strong> ₱350</p>
-          </div>
-
-          <div class="col-md-6">
-            <p>
-              <strong>Payment:</strong>
-
-              <span class="badge bg-success status-badge"> Paid </span>
-            </p>
-
-            <p>
-              <strong>Status:</strong>
-
-              <span class="badge bg-warning text-dark status-badge">
-                Drying
-              </span>
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
+  <?php include 'track_order.php'; ?>
 
   <!-- New Order -->
-  <section class="container py-5" id="order">
-    <div class="card shadow order-form">
-      <div class="card-body p-5">
-        <h2 class="mb-4">
-          <i class="bi bi-plus-circle"></i>
-          Create Laundry Order
-        </h2>
-
-        <form>
-          <div class="row">
-            <div class="col-md-6 mb-3">
-              <label class="form-label"> Customer Name </label>
-
-              <input type="text" class="form-control" />
-            </div>
-
-            <div class="col-md-6 mb-3">
-              <label class="form-label"> Phone Number </label>
-
-              <input type="text" class="form-control" />
-            </div>
-          </div>
-
-          <div class="mb-3">
-            <label class="form-label"> Weight (kg) </label>
-
-            <input type="number" class="form-control" />
-          </div>
-
-          <h5 class="mt-4">Select Services</h5>
-
-          <div class="form-check">
-            <input class="form-check-input" type="checkbox" />
-
-            <label class="form-check-label"> Wash </label>
-          </div>
-
-          <div class="form-check">
-            <input class="form-check-input" type="checkbox" />
-
-            <label class="form-check-label"> Dry </label>
-          </div>
-
-          <div class="form-check">
-            <input class="form-check-input" type="checkbox" />
-
-            <label class="form-check-label"> Fold </label>
-          </div>
-
-          <div class="alert alert-info mt-4">
-            Estimated Total: <strong>₱0.00</strong>
-          </div>
-
-          <button class="btn btn-primary btn-lg">Submit Order</button>
-        </form>
-      </div>
-    </div>
-  </section>
+  <?php include 'new_order.php'; ?>
 
   <!-- Footer -->
   <footer class="text-center">© 2026 Laundry Shop Management System</footer>
