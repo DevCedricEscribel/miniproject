@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Fire Drill Alert</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#dc3545">
+
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js"></script>
+  <script src="firebase-config.js"></script>
+</head>
+<body style="font-family: Arial; text-align:center; padding:40px;">
+
+<h2>🚨 Fire Drill Alert System</h2>
+
+<button onclick="enableNotifications()">Enable Notifications</button>
+<button onclick="sendTest()">Sample Fire Drill</button>
+
+<script>
+firebase.initializeApp(firebaseConfig);
+const messaging = firebase.messaging();
+
+navigator.serviceWorker.register("firebase-messaging-sw.js");
+
+async function enableNotifications() {
+  const permission = await Notification.requestPermission();
+  if (permission !== "granted") {
+    alert("Permission denied");
+    return;
+  }
+
+  const token = await messaging.getToken({
+    vapidKey: "YOUR_PUBLIC_VAPID_KEY"
+  });
+
+  console.log("FCM Token:", token);
+  alert("Notifications enabled");
+}
+
+function sendTest() {
+  alert("Fire alert must be sent from server (Firebase Console or backend)");
+}
+</script>
+
+</body>
+</html>
