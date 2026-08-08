@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS loans (
     id                   INT AUTO_INCREMENT PRIMARY KEY,
     borrower_name        VARCHAR(120)   NOT NULL,
     principal            DECIMAL(15,2)  NOT NULL,
-    interest_rate        DECIMAL(6,3)   NOT NULL,           -- annual interest rate, %
+    interest_rate        DECIMAL(6,3)   NOT NULL,           -- interest rate PER MONTH, %
     tenure_months        INT            NOT NULL,
     start_date           DATE           NOT NULL,
     emi_amount           DECIMAL(15,2)  NOT NULL,

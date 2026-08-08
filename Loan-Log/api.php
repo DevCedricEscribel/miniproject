@@ -18,42 +18,44 @@ header('Content-Type: application/json');
 $method = $_SERVER['REQUEST_METHOD'];
 $action = $_GET['action'] ?? ($_POST['action'] ?? '');
 
-function input() {
+function input()
+{
     $raw = file_get_contents('php://input');
     $json = json_decode($raw, true);
     return is_array($json) ? $json : $_POST;
 }
 
 // ---- EMI / amortization helpers -----------------------------------------
-function calc_emi($principal, $annualRatePct, $tenureMonths) {
-    $r = ($annualRatePct / 100) / 12;
-    if ($r == 0) {
-        return round($principal / $tenureMonths, 2);
-    }
-    $factor = pow(1 + $r, $tenureMonths);
-    $emi = $principal * $r * $factor / ($factor - 1);
-    return round($emi, 2);
+function calc_interest_amount($principal, $ratePct)
+{
+    return round($principal * ($ratePct / 100), 2);
 }
 
-function build_schedule($principal, $annualRatePct, $tenureMonths, $startDate, $emi) {
-    $r = ($annualRatePct / 100) / 12;
+function calc_emi($principal, $ratePct, $tenureMonths)
+{
+    $interest = calc_interest_amount($principal, $ratePct);
+    $principalPerMonth = round($principal / $tenureMonths, 2);
+    return round($principalPerMonth + $interest, 2);
+}
+
+function build_schedule($principal, $ratePct, $tenureMonths, $startDate, $emi)
+{
+    $interest = calc_interest_amount($principal, $ratePct);
+    $principalPerMonth = round($principal / $tenureMonths, 2);
     $balance = $principal;
     $rows = [];
     $date = new DateTime($startDate);
 
     for ($i = 1; $i <= $tenureMonths; $i++) {
         $date = (clone $date)->modify('+1 month');
-        $interest = round($balance * $r, 2);
-        $principalComp = round($emi - $interest, 2);
+        $principalComp = $principalPerMonth;
 
         // Last installment: absorb rounding difference so balance hits exactly 0
         if ($i == $tenureMonths) {
             $principalComp = $balance;
-            $emiThis = round($principalComp + $interest, 2);
-        } else {
-            $emiThis = $emi;
         }
 
+        $emiThis = round($principalComp + $interest, 2);
         $balance = round($balance - $principalComp, 2);
         if ($balance < 0) $balance = 0;
 
@@ -148,7 +150,7 @@ try {
 
             $name      = trim($d['borrower_name'] ?? '');
             $principal = floatval($d['principal'] ?? 0);
-            $rate      = floatval($d['interest_rate'] ?? 0);
+            $rate      = floatval($d['interest_rate'] ?? 0); // monthly interest rate, %
             $tenure    = intval($d['tenure_months'] ?? 0);
             $startDate = $d['start_date'] ?? date('Y-m-d');
             $notes     = trim($d['notes'] ?? '');
@@ -176,9 +178,13 @@ try {
                 VALUES (?,?,?,?,?,?,?)");
             foreach ($schedule as $row) {
                 $ins->execute([
-                    $loanId, $row['installment_no'], $row['due_date'],
-                    $row['principal_component'], $row['interest_component'],
-                    $row['emi_amount'], $row['balance_after'],
+                    $loanId,
+                    $row['installment_no'],
+                    $row['due_date'],
+                    $row['principal_component'],
+                    $row['interest_component'],
+                    $row['emi_amount'],
+                    $row['balance_after'],
                 ]);
             }
 

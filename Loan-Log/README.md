@@ -49,12 +49,15 @@ loan-calculator/
 
 ## How the numbers are calculated
 
-Standard reducing-balance EMI formula:
+**Flat interest model.** The interest rate you enter is multiplied straight against the principal to get a fixed monthly interest charge — it does **not** shrink as the balance is paid down:
 
 ```
-r   = (annual interest rate / 100) / 12      # monthly rate
-EMI = P × r × (1 + r)^n / ((1 + r)^n − 1)    # n = tenure in months
+interest_per_month  = principal × (rate% / 100)
+principal_per_month = principal / tenure_months
+EMI                 = principal_per_month + interest_per_month
 ```
+
+Example: a loan of 2,600 at 2.95% → interest = 2,600 × 0.0295 = **76.70**, charged every month for the full tenure. Only the principal portion of the payment reduces the outstanding balance each month; the interest portion stays the same amount every time.
 
 Each month, interest is charged on the remaining balance and the rest of the EMI reduces principal — the classic amortization schedule. The last installment is adjusted by a few cents if needed so the balance lands exactly on $0.
 
