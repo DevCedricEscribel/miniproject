@@ -195,6 +195,75 @@ try {
 
     <!-- Track Order -->
     <section class="container py-4" id="track">
+        <?php
+        $customerName = 'N/A';
+        $trackingNumber = '';
+        $orderTotal = '₱0';
+        $paymentStatus = 'Pending';
+        $orderStatus = 'Pending';
+        $paymentClass = 'bg-secondary';
+        $statusClass = 'bg-secondary text-white';
+        $searchMessage = '';
+
+        $trackingInput = isset($_GET['tracking']) ? trim($_GET['tracking']) : '';
+
+        try {
+            $orderTables = ['orders', 'laundry_orders', 'order', 'laundry_order'];
+            $orderTable = null;
+
+            foreach ($orderTables as $table) {
+                $checkStmt = $pdo->prepare("SHOW TABLES LIKE :table");
+                $checkStmt->execute(['table' => $table]);
+                if ($checkStmt->fetchColumn()) {
+                    $orderTable = $table;
+                    break;
+                }
+            }
+
+            if ($orderTable !== null) {
+                if ($trackingInput !== '') {
+                    $stmt = $pdo->prepare(
+                        "SELECT customer_name, tracking_number, total_amount, payment_status, status FROM {$orderTable} WHERE tracking_number = :tracking LIMIT 1"
+                    );
+                    $stmt->execute(['tracking' => $trackingInput]);
+                } else {
+                    $stmt = $pdo->query(
+                        "SELECT customer_name, tracking_number, total_amount, payment_status, status FROM {$orderTable} LIMIT 1"
+                    );
+                }
+
+                $order = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                if ($order) {
+                    $customerName = $order['customer_name'] ?? 'N/A';
+                    $trackingNumber = $order['tracking_number'] ?? $trackingInput;
+                    $orderTotal = '₱' . number_format($order['total_amount'] ?? 0, 2);
+                    $paymentStatus = $order['payment_status'] ?? 'Pending';
+                    $orderStatus = $order['status'] ?? 'Pending';
+
+                    $paymentClass = strtolower($paymentStatus) === 'paid' ? 'bg-success' : 'bg-danger';
+
+                    if (in_array(strtolower($orderStatus), ['drying', 'in progress', 'processing', 'washing'])) {
+                        $statusClass = 'bg-warning text-dark';
+                    } elseif (strtolower($orderStatus) === 'completed') {
+                        $statusClass = 'bg-success';
+                    } else {
+                        $statusClass = 'bg-secondary text-white';
+                    }
+                } else {
+                    $searchMessage = $trackingInput !== '' ? 'No order found for that tracking number.' : 'No orders available.';
+                    if ($trackingInput !== '') {
+                        $trackingNumber = $trackingInput;
+                    }
+                }
+            } else {
+                $searchMessage = 'Order table not found.';
+            }
+        } catch (PDOException $e) {
+            $searchMessage = 'Unable to load order data.';
+        }
+        ?>
+
         <div class="card shadow tracking-box">
             <div class="card-body p-5">
                 <h2 class="mb-4">
@@ -202,40 +271,48 @@ try {
                     Track Laundry Order
                 </h2>
 
-                <div class="row">
+                <form method="get" class="row g-3">
                     <div class="col-md-9">
                         <input
                             type="text"
+                            name="tracking"
                             class="form-control form-control-lg"
-                            placeholder="Enter Tracking Number" />
+                            placeholder="Enter Tracking Number"
+                            value="<?php echo htmlspecialchars($trackingInput); ?>" />
                     </div>
 
                     <div class="col-md-3">
-                        <button class="btn btn-primary w-100 btn-lg">Search</button>
+                        <button class="btn btn-primary w-100 btn-lg" type="submit">Search</button>
                     </div>
-                </div>
+                </form>
+
+                <?php if ($searchMessage): ?>
+                    <div class="alert alert-warning mt-4">
+                        <?php echo htmlspecialchars($searchMessage); ?>
+                    </div>
+                <?php endif; ?>
 
                 <hr />
 
                 <div class="row mt-4">
                     <div class="col-md-6">
-                        <p><strong>Customer:</strong> Juan Dela Cruz</p>
-                        <p><strong>Tracking #:</strong> LDY-1001</p>
-                        <p><strong>Total:</strong> ₱350</p>
+                        <p><strong>Customer:</strong> <?php echo htmlspecialchars($customerName); ?></p>
+                        <p><strong>Tracking #:</strong> <?php echo htmlspecialchars($trackingNumber ?: 'N/A'); ?></p>
+                        <p><strong>Total:</strong> <?php echo htmlspecialchars($orderTotal); ?></p>
                     </div>
 
                     <div class="col-md-6">
                         <p>
                             <strong>Payment:</strong>
-
-                            <span class="badge bg-success status-badge"> Paid </span>
+                            <span class="badge <?php echo htmlspecialchars($paymentClass . ' status-badge'); ?>">
+                                <?php echo htmlspecialchars($paymentStatus); ?>
+                            </span>
                         </p>
 
                         <p>
                             <strong>Status:</strong>
-
-                            <span class="badge bg-warning text-dark status-badge">
-                                Drying
+                            <span class="badge <?php echo htmlspecialchars($statusClass . ' status-badge'); ?>">
+                                <?php echo htmlspecialchars($orderStatus); ?>
                             </span>
                         </p>
                     </div>
@@ -246,7 +323,7 @@ try {
 
 
     <!-- Footer -->
-    <footer class="text-center">© 2026 Laundry Shop Management System</footer>
+    <footer class="text-center">©2026 Laundry Shop Management System</footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>

@@ -120,6 +120,26 @@ if (isset($_POST['submit_order'])) {
         </div>
     ";
 }
+
+$order = null;
+
+if (isset($_GET['tracking_no']) && !empty($_GET['tracking_no'])) {
+
+  $tracking_no = trim($_GET['tracking_no']);
+
+  $stmt = $pdo->prepare("
+        SELECT *
+        FROM laundry_orders
+        WHERE tracking_no = :tracking_no
+        LIMIT 1
+    ");
+
+  $stmt->execute([
+    ':tracking_no' => $tracking_no
+  ]);
+
+  $order = $stmt->fetch(PDO::FETCH_ASSOC);
+}
 ?>
 
 <!doctype html>
