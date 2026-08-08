@@ -119,10 +119,6 @@
                         />
                         <span class="input-group-text">% / month</span>
                       </div>
-                      <div class="form-text">
-                        e.g. 2600 &times; 2.95% = 76.70 interest charged every
-                        month
-                      </div>
                     </div>
                     <div class="mb-3">
                       <label class="form-label">Tenure (months)</label>
@@ -258,7 +254,40 @@
                       </td>
                     </tr>
                   </tbody>
+                  <tfoot class="table-light">
+                    <tr class="fw-bold">
+                      <td>Totals</td>
+                      <td id="totalPrincipal">-</td>
+                      <td></td>
+                      <td></td>
+                      <td id="totalEmi">-</td>
+                      <td id="totalBalance">-</td>
+                      <td colspan="2"></td>
+                    </tr>
+                  </tfoot>
                 </table>
+              </div>
+            </div>
+            <div class="card-footer bg-white">
+              <div class="row text-center g-3">
+                <div class="col-6 col-md-3">
+                  <div class="fw-bold fs-5" id="statActiveLoans">-</div>
+                  <div class="text-muted small">Active Loans</div>
+                </div>
+                <div class="col-6 col-md-3">
+                  <div class="fw-bold fs-5" id="statTotalPrincipal">-</div>
+                  <div class="text-muted small">Total Principal Lent</div>
+                </div>
+                <div class="col-6 col-md-3">
+                  <div class="fw-bold fs-5" id="statTotalEmi">-</div>
+                  <div class="text-muted small">Total Monthly Collectible</div>
+                </div>
+                <div class="col-6 col-md-3">
+                  <div class="fw-bold fs-5 text-danger" id="statTotalBalance">
+                    -
+                  </div>
+                  <div class="text-muted small">Total Outstanding Balance</div>
+                </div>
               </div>
             </div>
           </div>

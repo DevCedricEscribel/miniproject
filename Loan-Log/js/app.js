@@ -188,6 +188,7 @@ async function loadLoans() {
     if (!loans.length) {
       body.innerHTML =
         '<tr><td colspan="8" class="text-center text-muted py-4">No loans yet. Create one in the Calculator tab.</td></tr>';
+      updateLoanTotals([]);
       return;
     }
     body.innerHTML = loans
@@ -209,9 +210,34 @@ async function loadLoans() {
     `,
       )
       .join("");
+    updateLoanTotals(loans);
   } catch (err) {
     body.innerHTML = `<tr><td colspan="8" class="text-center text-danger py-4">Failed to load loans: ${err.message}</td></tr>`;
+    updateLoanTotals([]);
   }
+}
+
+function updateLoanTotals(loans) {
+  const totalPrincipal = loans.reduce((s, l) => s + Number(l.principal), 0);
+  const totalBalance = loans.reduce(
+    (s, l) => s + Number(l.outstanding_balance),
+    0,
+  );
+  // Only count EMI for loans that are still active (not yet fully paid off)
+  const totalEmi = loans
+    .filter((l) => l.status === "active")
+    .reduce((s, l) => s + Number(l.emi_amount), 0);
+  const activeCount = loans.filter((l) => l.status === "active").length;
+
+  document.getElementById("totalPrincipal").textContent = fmt(totalPrincipal);
+  document.getElementById("totalEmi").textContent = fmt(totalEmi);
+  document.getElementById("totalBalance").textContent = fmt(totalBalance);
+
+  document.getElementById("statActiveLoans").textContent = activeCount;
+  document.getElementById("statTotalPrincipal").textContent =
+    fmt(totalPrincipal);
+  document.getElementById("statTotalEmi").textContent = fmt(totalEmi);
+  document.getElementById("statTotalBalance").textContent = fmt(totalBalance);
 }
 
 function escapeHtml(str) {

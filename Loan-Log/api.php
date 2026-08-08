@@ -26,6 +26,11 @@ function input()
 }
 
 // ---- EMI / amortization helpers -----------------------------------------
+// FLAT INTEREST MODEL:
+//   interest_per_month = principal * (rate% / 100)   -- fixed, same every month
+//   principal_per_month = principal / tenure_months  -- fixed, same every month
+//   EMI = principal_per_month + interest_per_month
+// Example: principal 2600, rate 2.95% -> interest = 2600 * 0.0295 = 76.70 / month
 function calc_interest_amount($principal, $ratePct)
 {
     return round($principal * ($ratePct / 100), 2);
@@ -128,7 +133,7 @@ try {
             $events = array_map(function ($r) use ($colors) {
                 return [
                     'id'    => $r['id'],
-                    'title' => $r['borrower_name'] . ' - #' . $r['installment_no'] . ' ($' . number_format($r['emi_amount'], 2) . ')',
+                    'title' => $r['borrower_name'] . ' - #' . $r['installment_no'] . ' (₱' . number_format($r['emi_amount'], 2) . ')',
                     'start' => $r['due_date'],
                     'color' => $colors[$r['paid_status']] ?? '#6c757d',
                     'extendedProps' => [
